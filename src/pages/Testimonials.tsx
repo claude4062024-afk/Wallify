@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import { DashboardLayout } from '../components/layout/DashboardLayout'
-import { MessageSquareQuote, Plus, Search, Check, Archive, Trash2, Star, Loader2 } from 'lucide-react'
+import { MessageSquareQuote, Plus, Search, Check, Archive, Trash2, Star, Loader2, AlertCircle } from 'lucide-react'
 import { useTestimonials, useUpdateTestimonialStatus, useDeleteTestimonial } from '../hooks/useTestimonials'
+import { useCurrentProject } from '../hooks/useProjects'
 import type { TestimonialStatus } from '../hooks/useTestimonials'
-
-// Demo project ID - replace with actual project context
-const DEMO_PROJECT_ID = 'demo-project-id'
 
 type FilterStatus = TestimonialStatus | 'all'
 
@@ -38,14 +36,18 @@ export default function Testimonials() {
     const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
+    // Get current project from user's organization
+    const { project, isLoading: projectLoading, hasProjects, hasOrg } = useCurrentProject()
+    const projectId = project?.id || ''
+
     const { data: testimonials, isLoading, error } = useTestimonials({
-        projectId: DEMO_PROJECT_ID,
+        projectId,
         status: statusFilter,
         searchQuery,
     })
 
-    const updateStatus = useUpdateTestimonialStatus(DEMO_PROJECT_ID)
-    const deleteTestimonial = useDeleteTestimonial(DEMO_PROJECT_ID)
+    const updateStatus = useUpdateTestimonialStatus()
+    const deleteTestimonial = useDeleteTestimonial()
 
     const handleApprove = (id: string) => {
         updateStatus.mutate({ id, status: 'approved' })
@@ -76,11 +78,44 @@ export default function Testimonials() {
                         Manage and organize your customer testimonials.
                     </p>
                 </div>
-                <button className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded-lg transition-colors">
+                <button 
+                    disabled={!hasProjects}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                     <Plus className="w-5 h-5" />
                     Add Testimonial
                 </button>
             </div>
+
+            {/* No Organization State */}
+            {!projectLoading && !hasOrg && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-6 mb-6">
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5" />
+                        <div>
+                            <h3 className="font-semibold text-foreground">No organization found</h3>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Create an organization in Settings to start collecting testimonials.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* No Project State */}
+            {!projectLoading && hasOrg && !hasProjects && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-6 mb-6">
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5" />
+                        <div>
+                            <h3 className="font-semibold text-foreground">No project found</h3>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Create a project in Settings to start collecting testimonials.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Search Bar */}
             <div className="mb-6">
@@ -91,7 +126,8 @@ export default function Testimonials() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search testimonials..."
-                        className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all"
+                        disabled={!hasProjects}
+                        className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all disabled:opacity-50"
                     />
                 </div>
             </div>
@@ -114,7 +150,7 @@ export default function Testimonials() {
             </div>
 
             {/* Loading State */}
-            {isLoading && (
+            {(isLoading || projectLoading) && hasProjects && (
                 <div className="flex items-center justify-center py-20">
                     <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
                 </div>

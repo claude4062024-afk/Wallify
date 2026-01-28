@@ -152,6 +152,8 @@ export function WidgetBuilder({ isOpen, onClose, onSave, initialData, widgetId }
                     </div>
                     <button
                         onClick={onClose}
+                        aria-label="Close widget builder"
+                        title="Close"
                         className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                     >
                         <X className="w-5 h-5" />
@@ -165,6 +167,8 @@ export function WidgetBuilder({ isOpen, onClose, onSave, initialData, widgetId }
                             <div key={step.id} className="flex items-center">
                                 <button
                                     onClick={() => setCurrentStep(step.id)}
+                                    aria-label={`Go to step ${step.id}: ${step.name}`}
+                                    title={step.name}
                                     className={`flex flex-col items-center gap-1 transition-colors ${
                                         currentStep === step.id
                                             ? 'text-amber-600'
@@ -199,9 +203,9 @@ export function WidgetBuilder({ isOpen, onClose, onSave, initialData, widgetId }
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 flex overflow-hidden">
+                <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
                     {/* Left Panel - Form */}
-                    <div className="w-1/2 p-6 overflow-y-auto border-r border-gray-100">
+                    <div className="w-full lg:w-1/2 p-4 sm:p-6 overflow-y-auto border-b lg:border-b-0 lg:border-r border-gray-100">
                         {/* Step 1: Template */}
                         {currentStep === 1 && (
                             <div className="space-y-6">
@@ -252,18 +256,22 @@ export function WidgetBuilder({ isOpen, onClose, onSave, initialData, widgetId }
 
                                 {/* Accent Color */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Accent Color</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2" id="accent-color-label">Accent Color</label>
                                     <div className="flex items-center gap-3">
                                         <input
                                             type="color"
                                             value={config.accentColor}
                                             onChange={(e) => updateConfig('accentColor', e.target.value)}
+                                            aria-labelledby="accent-color-label"
+                                            title="Choose accent color"
                                             className="w-12 h-12 rounded-lg border border-gray-200 cursor-pointer"
                                         />
                                         <input
                                             type="text"
                                             value={config.accentColor}
                                             onChange={(e) => updateConfig('accentColor', e.target.value)}
+                                            aria-labelledby="accent-color-label"
+                                            placeholder="#f59e0b"
                                             className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono"
                                         />
                                     </div>
@@ -284,6 +292,8 @@ export function WidgetBuilder({ isOpen, onClose, onSave, initialData, widgetId }
                                             </div>
                                             <button
                                                 onClick={() => updateConfig(key, !config[key])}
+                                                aria-label={`Toggle ${label}`}
+                                                title={config[key] ? `Disable ${label}` : `Enable ${label}`}
                                                 className={`relative w-11 h-6 rounded-full transition-colors ${
                                                     config[key] ? 'bg-amber-500' : 'bg-gray-300'
                                                 }`}
@@ -298,7 +308,7 @@ export function WidgetBuilder({ isOpen, onClose, onSave, initialData, widgetId }
 
                                 {/* Max Testimonials */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2" id="max-testimonials-label">
                                         Max Testimonials: {config.maxTestimonials}
                                     </label>
                                     <input
@@ -307,6 +317,8 @@ export function WidgetBuilder({ isOpen, onClose, onSave, initialData, widgetId }
                                         max="20"
                                         value={config.maxTestimonials}
                                         onChange={(e) => updateConfig('maxTestimonials', parseInt(e.target.value))}
+                                        aria-labelledby="max-testimonials-label"
+                                        title={`${config.maxTestimonials} testimonials`}
                                         className="w-full accent-amber-500"
                                     />
                                 </div>
@@ -410,6 +422,8 @@ export function WidgetBuilder({ isOpen, onClose, onSave, initialData, widgetId }
                                                     {tag}
                                                     <button
                                                         onClick={() => removeTag(tag)}
+                                                        aria-label={`Remove tag: ${tag}`}
+                                                        title={`Remove ${tag}`}
                                                         className="hover:text-amber-900"
                                                     >
                                                         <X className="w-3 h-3" />
@@ -483,6 +497,8 @@ export function WidgetBuilder({ isOpen, onClose, onSave, initialData, widgetId }
                                             <span className="text-sm font-medium text-gray-700">Rule</span>
                                             <button
                                                 onClick={() => removeRule(rule.id)}
+                                                aria-label="Remove rule"
+                                                title="Remove rule"
                                                 className="p-1 text-red-500 hover:bg-red-50 rounded"
                                             >
                                                 <Trash2 className="w-4 h-4" />
@@ -492,6 +508,8 @@ export function WidgetBuilder({ isOpen, onClose, onSave, initialData, widgetId }
                                             <select
                                                 value={rule.condition}
                                                 onChange={(e) => updateRule(rule.id, { condition: e.target.value as WidgetRule['condition'] })}
+                                                aria-label="Condition type"
+                                                title="Select condition type"
                                                 className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
                                             >
                                                 <option value="url_contains">URL contains</option>
@@ -508,6 +526,8 @@ export function WidgetBuilder({ isOpen, onClose, onSave, initialData, widgetId }
                                             <select
                                                 value={rule.action}
                                                 onChange={(e) => updateRule(rule.id, { action: e.target.value as WidgetRule['action'] })}
+                                                aria-label="Action type"
+                                                title="Select action type"
                                                 className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
                                             >
                                                 <option value="show_tag">Show testimonials with tag</option>
@@ -596,7 +616,7 @@ export function WidgetBuilder({ isOpen, onClose, onSave, initialData, widgetId }
                     </div>
 
                     {/* Right Panel - Preview */}
-                    <div className="w-1/2 bg-gray-50 p-6 flex flex-col overflow-hidden">
+                    <div className="w-full lg:w-1/2 bg-gray-50 p-4 sm:p-6 flex flex-col overflow-hidden min-h-[300px] lg:min-h-0">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="font-semibold text-gray-900">Preview</h3>
                             <div className="flex items-center gap-1 bg-white rounded-lg p-1 border border-gray-200">
@@ -608,6 +628,8 @@ export function WidgetBuilder({ isOpen, onClose, onSave, initialData, widgetId }
                                     <button
                                         key={device}
                                         onClick={() => setPreviewDevice(device)}
+                                        aria-label={`Preview on ${device}`}
+                                        title={`${device.charAt(0).toUpperCase() + device.slice(1)} preview`}
                                         className={`p-2 rounded-md transition-colors ${
                                             previewDevice === device
                                                 ? 'bg-amber-500 text-white'

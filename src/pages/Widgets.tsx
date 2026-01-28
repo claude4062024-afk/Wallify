@@ -13,6 +13,7 @@ import {
     Copy,
     Check,
     Loader2,
+    AlertCircle,
 } from 'lucide-react'
 import { WidgetBuilder } from '../components/widgets/WidgetBuilder'
 import {
@@ -27,9 +28,8 @@ import {
     type WidgetConfig,
     type WidgetRule,
 } from '../hooks/useWidgets'
-
-// Demo project ID - replace with actual project context
-const DEMO_PROJECT_ID = 'demo-project-id'
+import { useCurrentProject } from '../hooks/useProjects'
+import type { Json } from '../types/database'
 
 const typeIcons: Record<WidgetType, typeof LayoutGrid> = {
     grid: LayoutGrid,
@@ -101,6 +101,8 @@ function WidgetCard({
                     {/* Toggle Switch */}
                     <button
                         onClick={() => onToggleActive(!widget.is_active)}
+                        aria-label={widget.is_active ? 'Deactivate widget' : 'Activate widget'}
+                        title={widget.is_active ? 'Deactivate widget' : 'Activate widget'}
                         className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
                             widget.is_active ? 'bg-green-500' : 'bg-gray-300'
                         }`}
@@ -129,6 +131,8 @@ function WidgetCard({
                     </button>
                     <button
                         onClick={onDelete}
+                        aria-label="Delete widget"
+                        title="Delete widget"
                         className="flex items-center justify-center px-3 py-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg text-sm font-medium transition-colors"
                     >
                         <Trash2 className="w-4 h-4" />
@@ -143,6 +147,8 @@ function WidgetCard({
                         </pre>
                         <button
                             onClick={handleCopy}
+                            aria-label={copied ? 'Copied!' : 'Copy embed code'}
+                            title={copied ? 'Copied!' : 'Copy embed code'}
                             className={`absolute top-2 right-2 p-1.5 rounded text-xs transition-colors ${
                                 copied
                                     ? 'bg-green-500 text-white'
@@ -163,7 +169,11 @@ export default function Widgets() {
     const [editingWidget, setEditingWidget] = useState<Widget | null>(null)
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
-    const { data: widgets, isLoading, error } = useWidgets(DEMO_PROJECT_ID)
+    // Get current project from user's organization
+    const { project, isLoading: projectLoading, hasProjects, hasOrg } = useCurrentProject()
+    const projectId = project?.id || ''
+
+    const { data: widgets, isLoading, error } = useWidgets(projectId)
     const createWidget = useCreateWidget()
     const deleteWidget = useDeleteWidget()
     const toggleActive = useToggleWidgetActive()
@@ -186,9 +196,9 @@ export default function Widgets() {
             createWidget.mutate({
                 name: data.name,
                 type: data.type,
-                project_id: DEMO_PROJECT_ID,
-                config: data.config as unknown as Record<string, unknown>,
-                rules: data.rules as unknown as Record<string, unknown>,
+                project_id: projectId,
+                config: data.config as unknown as Json,
+                rules: data.rules as unknown as Json,
                 is_active: true,
             })
         }
@@ -222,15 +232,46 @@ export default function Widgets() {
                 </div>
                 <button
                     onClick={handleCreateWidget}
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded-lg transition-colors"
+                    disabled={!hasProjects}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Plus className="w-5 h-5" />
                     Create Widget
                 </button>
             </div>
 
+            {/* No Organization State */}
+            {!projectLoading && !hasOrg && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-6 mb-6">
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5" />
+                        <div>
+                            <h3 className="font-semibold text-foreground">No organization found</h3>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Create an organization in Settings to start building widgets.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* No Project State */}
+            {!projectLoading && hasOrg && !hasProjects && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-6 mb-6">
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5" />
+                        <div>
+                            <h3 className="font-semibold text-foreground">No project found</h3>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Create a project in Settings to start building widgets.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Loading State */}
-            {isLoading && (
+            {projectLoading && (
                 <div className="flex items-center justify-center py-20">
                     <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
                 </div>
@@ -313,8 +354,8 @@ export default function Widgets() {
                 initialData={editingWidget ? {
                     name: editingWidget.name,
                     type: editingWidget.type,
-                    config: (editingWidget.config as WidgetConfig) || defaultWidgetConfig,
-                    rules: (editingWidget.rules as WidgetRule[]) || [],
+                    config: (editingWidget.config as unknown as WidgetConfig) || defaultWidgetConfig,
+                    rules: (editingWidget.rules as unknown as WidgetRule[]) || [],
                 } : undefined}
                 widgetId={editingWidget?.id}
             />

@@ -62,7 +62,7 @@ export function useTestimonials(filters: TestimonialsFilters) {
     })
 }
 
-export function useUpdateTestimonialStatus(projectId: string) {
+export function useUpdateTestimonialStatus() {
     const queryClient = useQueryClient()
 
     return useMutation({
@@ -74,7 +74,7 @@ export function useUpdateTestimonialStatus(projectId: string) {
     })
 }
 
-export function useDeleteTestimonial(projectId: string) {
+export function useDeleteTestimonial() {
     const queryClient = useQueryClient()
 
     return useMutation({
