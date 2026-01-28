@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Sparkles, Download, Play, Crown, Zap, Eye } from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
 
 const wallpapers = [
     { id: 1, title: "Neon Abyss", category: "Cyberpunk", downloads: "12.4K", color: "from-violet-600 via-fuchsia-500 to-pink-500" },
@@ -22,6 +24,44 @@ const stars = Array.from({ length: 200 }, (_, i) => ({
 
 export const Home = () => {
     const [hoveredCard, setHoveredCard] = useState<number | null>(null)
+    const navigate = useNavigate()
+    const { isAuthenticated } = useAuth()
+
+    const handleExplore = () => {
+        if (isAuthenticated) {
+            navigate('/dashboard')
+        } else {
+            navigate('/login')
+        }
+    }
+
+    const handleGoPremium = () => {
+        if (isAuthenticated) {
+            navigate('/settings?tab=billing')
+        } else {
+            navigate('/signup')
+        }
+    }
+
+    const handleBrowse = () => {
+        if (isAuthenticated) {
+            navigate('/dashboard')
+        } else {
+            navigate('/login')
+        }
+    }
+
+    const handlePricing = () => {
+        navigate('/pricing')
+    }
+
+    const handleAIGenerate = () => {
+        if (isAuthenticated) {
+            navigate('/widgets')
+        } else {
+            navigate('/signup')
+        }
+    }
 
     return (
         <div className="min-h-screen bg-[#030014] text-white overflow-x-hidden">
@@ -50,7 +90,7 @@ export const Home = () => {
             {/* Navigation */}
             <nav className="relative z-50 container mx-auto px-6 py-6">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 group cursor-pointer">
+                    <div className="flex items-center gap-3 group cursor-pointer" onClick={() => navigate('/')}>
                         <div className="relative">
                             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-fuchsia-500 via-purple-600 to-cyan-500 p-[2px]">
                                 <div className="w-full h-full rounded-2xl bg-[#030014] flex items-center justify-center">
@@ -63,16 +103,25 @@ export const Home = () => {
                         </span>
                     </div>
                     <div className="flex items-center gap-4">
-                        <button className="px-5 py-2.5 text-sm font-medium text-white/70 hover:text-white transition-colors">
+                        <button 
+                            onClick={handleBrowse}
+                            className="px-5 py-2.5 text-sm font-medium text-white/70 hover:text-white transition-colors"
+                        >
                             Browse
                         </button>
-                        <button className="px-5 py-2.5 text-sm font-medium text-white/70 hover:text-white transition-colors">
+                        <button 
+                            onClick={handlePricing}
+                            className="px-5 py-2.5 text-sm font-medium text-white/70 hover:text-white transition-colors"
+                        >
                             Pricing
                         </button>
-                        <button className="group relative px-6 py-3 rounded-full overflow-hidden hover:opacity-90 transition-opacity">
+                        <button 
+                            onClick={handleGoPremium}
+                            className="group relative px-6 py-3 rounded-full overflow-hidden hover:opacity-90 transition-opacity"
+                        >
                             <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-600 via-purple-600 to-cyan-600" />
                             <span className="relative font-semibold text-sm flex items-center gap-2">
-                                <Crown className="w-4 h-4" /> Go Premium
+                                <Crown className="w-4 h-4" /> {isAuthenticated ? 'Dashboard' : 'Go Premium'}
                             </span>
                         </button>
                     </div>
@@ -104,13 +153,19 @@ export const Home = () => {
                         </p>
 
                         <div className="flex flex-wrap justify-center gap-4">
-                            <button className="group relative px-10 py-5 rounded-2xl overflow-hidden hover:opacity-90 transition-opacity">
+                            <button 
+                                onClick={handleExplore}
+                                className="group relative px-10 py-5 rounded-2xl overflow-hidden hover:opacity-90 transition-opacity"
+                            >
                                 <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-600 to-purple-600" />
                                 <span className="relative font-bold text-lg flex items-center gap-3">
-                                    <Play className="w-5 h-5" fill="white" /> Explore Collection
+                                    <Play className="w-5 h-5" fill="white" /> {isAuthenticated ? 'Dashboard' : 'Explore Collection'}
                                 </span>
                             </button>
-                            <button className="group px-10 py-5 rounded-2xl border border-white/20 hover:border-white/40 hover:bg-white/5 transition-all duration-300">
+                            <button 
+                                onClick={handleAIGenerate}
+                                className="group px-10 py-5 rounded-2xl border border-white/20 hover:border-white/40 hover:bg-white/5 transition-all duration-300"
+                            >
                                 <span className="font-bold text-lg flex items-center gap-3 text-white/80 group-hover:text-white transition-colors">
                                     <Sparkles className="w-5 h-5" /> AI Generate
                                 </span>
