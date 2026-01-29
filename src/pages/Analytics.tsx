@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DashboardLayout } from '../components/layout/DashboardLayout'
 import {
     Eye,
@@ -107,6 +107,27 @@ function LiveIndicator() {
                 </div>
             </div>
             <span className="text-sm font-medium text-green-700">Live</span>
+        </div>
+    )
+}
+
+function EngagementBar({ engagement }: { engagement: number }) {
+    const barRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const el = barRef.current
+        if (!el) return
+
+        const width = Math.min(engagement * 3, 100)
+        const color = engagement > 20 ? '#10b981' : engagement > 10 ? '#f59e0b' : '#ef4444'
+
+        el.style.setProperty('--wb-engagement-width', `${width}%`)
+        el.style.setProperty('--wb-engagement-color', color)
+    }, [engagement])
+
+    return (
+        <div className="w-24 h-6 bg-gray-100 rounded-full overflow-hidden">
+            <div ref={barRef} className="h-full rounded-full transition-all wb-engagement-bar" />
         </div>
     )
 }
@@ -412,15 +433,7 @@ export default function Analytics() {
                                         <p className="text-sm font-medium text-gray-900 truncate">{page.url}</p>
                                         <p className="text-xs text-gray-500">{page.views} views • {page.clicks} clicks</p>
                                     </div>
-                                    <div className="w-24 h-6 bg-gray-100 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full rounded-full transition-all"
-                                            style={{
-                                                width: `${Math.min(page.engagement * 3, 100)}%`,
-                                                backgroundColor: page.engagement > 20 ? '#10b981' : page.engagement > 10 ? '#f59e0b' : '#ef4444',
-                                            }}
-                                        />
-                                    </div>
+                                    <EngagementBar engagement={page.engagement} />
                                     <span className="text-sm font-medium text-gray-600 w-12 text-right">
                                         {page.engagement}%
                                     </span>

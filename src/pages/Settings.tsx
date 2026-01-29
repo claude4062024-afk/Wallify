@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DashboardLayout } from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
 import { useOrganization, useTeamMembers, useUsageStats, useUpdateOrganization, useRemoveMember, useDeleteOrganization } from '../hooks/useOrganization'
@@ -58,6 +58,23 @@ const TIER_PRICES: Record<string, number> = {
     enterprise: 499,
 }
 
+/** Reusable progress bar that uses CSS variables for styling */
+function ProgressBar({ value }: { value: number }) {
+    const barRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const el = barRef.current
+        if (!el) return
+        el.style.setProperty('--wb-progress', `${Math.min(Math.max(value, 0), 100)}%`)
+    }, [value])
+
+    return (
+        <div className="w-full h-2 bg-muted rounded-full mt-2">
+            <div ref={barRef} className="h-full rounded-full transition-all wb-progress" />
+        </div>
+    )
+}
+
 export default function Settings() {
     const { profile, user } = useAuth()
     const [activeTab, setActiveTab] = useState<TabType>('profile')
@@ -70,8 +87,9 @@ export default function Settings() {
     const [newProjectDomain, setNewProjectDomain] = useState('')
     const [inviteEmail, setInviteEmail] = useState('')
     const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member')
-    const [profileName, setProfileName] = useState(profile?.full_name || '')
-    const [orgName, setOrgName] = useState('')
+    // Local edits - null means use server value, string means local edit in progress
+    const [profileNameEdit, setProfileNameEdit] = useState<string | null>(null)
+    const [orgNameEdit, setOrgNameEdit] = useState<string | null>(null)
     const [newDomain, setNewDomain] = useState('')
     const [apiKeyInput, setApiKeyInput] = useState<Record<string, string>>({})
 
@@ -82,6 +100,10 @@ export default function Settings() {
     const { data: usageStats } = useUsageStats()
     const { data: notificationPrefs, isLoading: notifLoading, isFetching: notifFetching } = useNotificationPreferences()
     const { data: integrations, isLoading: integrationsLoading, isFetching: integrationsFetching } = useIntegrations()
+
+    // Derived values: use local edit if in progress, otherwise use server value
+    const profileName = profileNameEdit ?? profile?.full_name ?? ''
+    const orgName = orgNameEdit ?? organization?.name ?? ''
     
     // Check if user has an organization - if profile loaded but no org_id, they need to create one
     const hasOrg = !!profile?.org_id
@@ -107,15 +129,6 @@ export default function Settings() {
     const connectApi = useConnectApiIntegration()
     const disconnectIntegration = useDisconnectIntegration()
 
-    // Initialize form values when data loads
-    useEffect(() => {
-        if (profile?.full_name) setProfileName(profile.full_name)
-    }, [profile?.full_name])
-
-    useEffect(() => {
-        if (organization?.name) setOrgName(organization.name)
-    }, [organization?.name])
-
     const tabs = [
         { id: 'profile' as const, name: 'Profile', icon: User },
         { id: 'organization' as const, name: 'Organization', icon: Building2 },
@@ -132,11 +145,15 @@ export default function Settings() {
     }
 
     const handleSaveProfile = () => {
-        updateProfile.mutate({ full_name: profileName })
+        updateProfile.mutate({ full_name: profileName }, {
+            onSuccess: () => setProfileNameEdit(null) // Clear local edit after save
+        })
     }
 
     const handleSaveOrg = () => {
-        updateOrg.mutate({ name: orgName })
+        updateOrg.mutate({ name: orgName }, {
+            onSuccess: () => setOrgNameEdit(null) // Clear local edit after save
+        })
     }
 
     const handleCreateProject = () => {
@@ -296,7 +313,7 @@ export default function Settings() {
                                     <input
                                         type="text"
                                         value={profileName}
-                                        onChange={(e) => setProfileName(e.target.value)}
+                                        onChange={(e) => setProfileNameEdit(e.target.value)}
                                         placeholder="Enter your full name"
                                         className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all"
                                     />
@@ -304,11 +321,13 @@ export default function Settings() {
 
                                 {/* Email (Read-only) */}
                                 <div>
-                                    <label className="block text-sm font-medium text-foreground mb-2">Email</label>
+                                    <label htmlFor="profile-email" className="block text-sm font-medium text-foreground mb-2">Email</label>
                                     <input
+                                        id="profile-email"
                                         type="email"
                                         defaultValue={user?.email || ''}
                                         disabled
+                                        placeholder="your@email.com"
                                         className="w-full px-4 py-3 bg-background/50 border border-border rounded-lg text-muted-foreground cursor-not-allowed"
                                     />
                                     <p className="text-xs text-muted-foreground mt-1">Contact support to change your email</p>
@@ -372,7 +391,7 @@ export default function Settings() {
                                         <input
                                             type="text"
                                             value={orgName}
-                                            onChange={(e) => setOrgName(e.target.value)}
+                                            onChange={(e) => setOrgNameEdit(e.target.value)}
                                             placeholder="Enter organization name"
                                             className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all"
                                         />
@@ -579,6 +598,8 @@ export default function Settings() {
                                                     <button 
                                                         onClick={() => handleRemoveDomain(project.id, domain)}
                                                         className="text-muted-foreground hover:text-red-400 transition-colors"
+                                                        aria-label={`Remove domain ${domain}`}
+                                                        title={`Remove ${domain}`}
                                                     >
                                                         <X className="w-3 h-3" />
                                                     </button>
@@ -596,6 +617,8 @@ export default function Settings() {
                                                 <button 
                                                     onClick={() => handleAddDomain(project.id)}
                                                     className="p-1 text-amber-500 hover:bg-amber-500/10 rounded-full transition-colors"
+                                                    aria-label="Add domain"
+                                                    title="Add domain"
                                                 >
                                                     <Plus className="w-4 h-4" />
                                                 </button>
@@ -655,12 +678,7 @@ export default function Settings() {
                                             {usageStats?.testimonials.used ?? 0} 
                                             <span className="text-sm font-normal text-muted-foreground"> / {usageStats?.testimonials.limit ?? 100}</span>
                                         </p>
-                                        <div className="w-full h-2 bg-muted rounded-full mt-2">
-                                            <div 
-                                                className="h-full bg-amber-500 rounded-full transition-all" 
-                                                style={{ width: `${Math.min((usageStats?.testimonials.used ?? 0) / (usageStats?.testimonials.limit ?? 100) * 100, 100)}%` }}
-                                            />
-                                        </div>
+                                        <ProgressBar value={Math.min((usageStats?.testimonials.used ?? 0) / (usageStats?.testimonials.limit ?? 100) * 100, 100)} />
                                     </div>
                                     <div className="p-4 bg-background/50 rounded-lg">
                                         <p className="text-sm text-muted-foreground">Widgets</p>
@@ -668,12 +686,7 @@ export default function Settings() {
                                             {usageStats?.widgets.used ?? 0} 
                                             <span className="text-sm font-normal text-muted-foreground"> / {usageStats?.widgets.limit ?? 5}</span>
                                         </p>
-                                        <div className="w-full h-2 bg-muted rounded-full mt-2">
-                                            <div 
-                                                className="h-full bg-amber-500 rounded-full transition-all" 
-                                                style={{ width: `${Math.min((usageStats?.widgets.used ?? 0) / (usageStats?.widgets.limit ?? 5) * 100, 100)}%` }}
-                                            />
-                                        </div>
+                                        <ProgressBar value={Math.min((usageStats?.widgets.used ?? 0) / (usageStats?.widgets.limit ?? 5) * 100, 100)} />
                                     </div>
                                     <div className="p-4 bg-background/50 rounded-lg">
                                         <p className="text-sm text-muted-foreground">Monthly Views</p>
@@ -681,12 +694,7 @@ export default function Settings() {
                                             {formatNumber(usageStats?.monthlyViews.used ?? 0)} 
                                             <span className="text-sm font-normal text-muted-foreground"> / {formatNumber(usageStats?.monthlyViews.limit ?? 10000)}</span>
                                         </p>
-                                        <div className="w-full h-2 bg-muted rounded-full mt-2">
-                                            <div 
-                                                className="h-full bg-amber-500 rounded-full transition-all" 
-                                                style={{ width: `${Math.min((usageStats?.monthlyViews.used ?? 0) / (usageStats?.monthlyViews.limit ?? 10000) * 100, 100)}%` }}
-                                            />
-                                        </div>
+                                        <ProgressBar value={Math.min((usageStats?.monthlyViews.used ?? 0) / (usageStats?.monthlyViews.limit ?? 10000) * 100, 100)} />
                                     </div>
                                 </div>
                                 )}
@@ -895,6 +903,8 @@ export default function Settings() {
                             value={deleteConfirmText}
                             onChange={(e) => setDeleteConfirmText(e.target.value)}
                             className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground mb-4 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                            placeholder="delete my organization"
+                            aria-label="Confirm delete organization"
                         />
                         <div className="flex gap-3">
                             <button

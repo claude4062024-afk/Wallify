@@ -222,10 +222,18 @@ export const Home = () => {
                                                 </div>
                                             </div>
                                             <div className={`flex gap-2 transition-all duration-300 ${hoveredCard === wallpaper.id ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                                                <button className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors">
+                                                <button
+                                                    className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
+                                                    aria-label="Preview wallpaper"
+                                                    title="Preview wallpaper"
+                                                >
                                                     <Eye className="w-5 h-5" />
                                                 </button>
-                                                <button className="w-12 h-12 rounded-2xl bg-gradient-to-r from-fuchsia-600 to-purple-600 flex items-center justify-center hover:opacity-90 transition-opacity">
+                                                <button
+                                                    className="w-12 h-12 rounded-2xl bg-gradient-to-r from-fuchsia-600 to-purple-600 flex items-center justify-center hover:opacity-90 transition-opacity"
+                                                    aria-label="Download wallpaper"
+                                                    title="Download wallpaper"
+                                                >
                                                     <Download className="w-5 h-5" />
                                                 </button>
                                             </div>

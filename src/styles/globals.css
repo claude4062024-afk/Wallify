@@ -74,6 +74,22 @@
     --ring: 346.8 100% 62.4%;
     --radius: 0.75rem;
   }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
 }
 
 @layer utilities {
@@ -91,23 +107,42 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-}
 
-@layer base {
-  * {
-    @apply border-border;
+  .wb-preview {
+    --wb-accent: #f59e0b;
+    --wb-accent-40: #f59e0b40;
+    --wb-accent-10: #f59e0b10;
+    --wb-columns: 2;
   }
 
-  body {
-    @apply bg-background text-foreground font-body antialiased;
+  .wb-border-accent {
+    border-color: var(--wb-accent-40);
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-display;
+  .wb-bg-accent {
+    background-color: var(--wb-accent);
+  }
+
+  .wb-bg-accent-10 {
+    background-color: var(--wb-accent-10);
+  }
+
+  .wb-dot-active {
+    background-color: var(--wb-accent);
+  }
+
+  .wb-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--wb-columns, 2), minmax(0, 1fr));
+  }
+
+  .wb-progress {
+    width: var(--wb-progress, 0%);
+    background-color: var(--wb-progress-color, #f59e0b);
+  }
+
+  .wb-engagement-bar {
+    width: var(--wb-engagement-width, 0%);
+    background-color: var(--wb-engagement-color, #f59e0b);
   }
 }

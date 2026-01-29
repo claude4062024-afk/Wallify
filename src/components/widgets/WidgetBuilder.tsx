@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
     X,
     LayoutGrid,
@@ -30,6 +30,19 @@ import {
     defaultWidgetConfig,
     generateEmbedCode,
 } from '../../hooks/useWidgets'
+
+/** Convert hex color to hex with alpha suffix (e.g., #f59e0b → #f59e0b40) */
+function toHexWithAlpha(color: string, alphaHex: string): string {
+    if (!color.startsWith('#')) return color
+    if (color.length === 7) return `${color}${alphaHex}`
+    if (color.length === 4) {
+        const r = color[1]
+        const g = color[2]
+        const b = color[3]
+        return `#${r}${r}${g}${g}${b}${b}${alphaHex}`
+    }
+    return color
+}
 
 interface WidgetBuilderProps {
     isOpen: boolean
@@ -707,6 +720,19 @@ const mockTestimonials = [
 ]
 
 function WidgetPreview({ type, config }: { type: WidgetType; config: WidgetConfig }) {
+    const previewRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const el = previewRef.current
+        if (!el) return
+
+        const accent = config.accentColor
+        el.style.setProperty('--wb-accent', accent)
+        el.style.setProperty('--wb-accent-40', toHexWithAlpha(accent, '40'))
+        el.style.setProperty('--wb-accent-10', toHexWithAlpha(accent, '10'))
+        el.style.setProperty('--wb-columns', `${Math.min(config.columns, 2)}`)
+    }, [config.accentColor, config.columns])
+
     const getBorderRadius = () => {
         switch (config.borderRadius) {
             case 'none': return 'rounded-none'
@@ -728,11 +754,11 @@ function WidgetPreview({ type, config }: { type: WidgetType; config: WidgetConfi
 
     if (type === 'carousel') {
         return (
-            <div className="space-y-4">
-                <div className={`border ${getBorderRadius()} ${getSpacing()}`} style={{ borderColor: config.accentColor + '40' }}>
+            <div ref={previewRef} className="wb-preview space-y-4">
+                <div className={`border wb-border-accent ${getBorderRadius()} ${getSpacing()}`}>
                     <div className="flex items-start gap-3">
                         {config.showAvatars && (
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: config.accentColor }}>
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold wb-bg-accent">
                                 {displayTestimonials[0]?.name.charAt(0)}
                             </div>
                         )}
@@ -756,7 +782,7 @@ function WidgetPreview({ type, config }: { type: WidgetType; config: WidgetConfi
                 </div>
                 <div className="flex justify-center gap-2">
                     {displayTestimonials.map((_, i) => (
-                        <div key={i} className={`w-2 h-2 rounded-full ${i === 0 ? '' : 'bg-gray-300'}`} style={i === 0 ? { backgroundColor: config.accentColor } : {}} />
+                        <div key={i} className={`w-2 h-2 rounded-full ${i === 0 ? 'wb-dot-active' : 'bg-gray-300'}`} />
                     ))}
                 </div>
             </div>
@@ -765,10 +791,10 @@ function WidgetPreview({ type, config }: { type: WidgetType; config: WidgetConfi
 
     if (type === 'ticker') {
         return (
-            <div className="overflow-hidden">
+            <div ref={previewRef} className="wb-preview overflow-hidden">
                 <div className="flex gap-4 animate-pulse">
                     {displayTestimonials.slice(0, 3).map((t) => (
-                        <div key={t.id} className={`flex-shrink-0 w-64 border ${getBorderRadius()} ${getSpacing()}`} style={{ borderColor: config.accentColor + '40' }}>
+                        <div key={t.id} className={`flex-shrink-0 w-64 border wb-border-accent ${getBorderRadius()} ${getSpacing()}`}>
                             <p className="text-gray-700 text-xs line-clamp-2">{t.content}</p>
                             <p className="text-gray-900 text-xs font-medium mt-2">{t.name}</p>
                         </div>
@@ -780,12 +806,12 @@ function WidgetPreview({ type, config }: { type: WidgetType; config: WidgetConfi
 
     if (type === 'feed') {
         return (
-            <div className="space-y-3">
+            <div ref={previewRef} className="wb-preview space-y-3">
                 {displayTestimonials.map((t) => (
-                    <div key={t.id} className={`border ${getBorderRadius()} ${getSpacing()}`} style={{ borderColor: config.accentColor + '40' }}>
+                    <div key={t.id} className={`border wb-border-accent ${getBorderRadius()} ${getSpacing()}`}>
                         <div className="flex items-center gap-2 mb-2">
                             {config.showAvatars && (
-                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: config.accentColor }}>
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold wb-bg-accent">
                                     {t.name.charAt(0)}
                                 </div>
                             )}
@@ -811,9 +837,9 @@ function WidgetPreview({ type, config }: { type: WidgetType; config: WidgetConfi
     if (type === 'story') {
         const t = displayTestimonials[0]
         return (
-            <div className={`h-80 flex flex-col items-center justify-center text-center ${getSpacing()} ${getBorderRadius()}`} style={{ backgroundColor: config.accentColor + '10' }}>
+            <div ref={previewRef} className={`wb-preview h-80 flex flex-col items-center justify-center text-center wb-bg-accent-10 ${getSpacing()} ${getBorderRadius()}`}>
                 {config.showAvatars && (
-                    <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold mb-4" style={{ backgroundColor: config.accentColor }}>
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold mb-4 wb-bg-accent">
                         {t?.name.charAt(0)}
                     </div>
                 )}
@@ -833,12 +859,12 @@ function WidgetPreview({ type, config }: { type: WidgetType; config: WidgetConfi
 
     // Default: Grid
     return (
-        <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${Math.min(config.columns, 2)}, 1fr)` }}>
+        <div ref={previewRef} className="wb-preview wb-grid gap-4">
             {displayTestimonials.map((t) => (
-                <div key={t.id} className={`border ${getBorderRadius()} ${getSpacing()}`} style={{ borderColor: config.accentColor + '40' }}>
+                <div key={t.id} className={`border wb-border-accent ${getBorderRadius()} ${getSpacing()}`}>
                     <div className="flex items-center gap-2 mb-2">
                         {config.showAvatars && (
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: config.accentColor }}>
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold wb-bg-accent">
                                 {t.name.charAt(0)}
                             </div>
                         )}
