@@ -876,9 +876,11 @@ export type Database = {
           ga_tracking_id: string | null
           gtm_container_id: string | null
           id: string
+          is_published: boolean | null
           last_build_at: string | null
           last_build_duration_ms: number | null
           layout_config: Json
+          page_path: string | null
           project_id: string
           seo_config: Json
           show_powered_by: boolean | null
@@ -899,9 +901,11 @@ export type Database = {
           ga_tracking_id?: string | null
           gtm_container_id?: string | null
           id?: string
+          is_published?: boolean | null
           last_build_at?: string | null
           last_build_duration_ms?: number | null
           layout_config?: Json
+          page_path?: string | null
           project_id: string
           seo_config?: Json
           show_powered_by?: boolean | null
@@ -922,9 +926,11 @@ export type Database = {
           ga_tracking_id?: string | null
           gtm_container_id?: string | null
           id?: string
+          is_published?: boolean | null
           last_build_at?: string | null
           last_build_duration_ms?: number | null
           layout_config?: Json
+          page_path?: string | null
           project_id?: string
           seo_config?: Json
           show_powered_by?: boolean | null
