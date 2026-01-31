@@ -386,8 +386,7 @@ export function useNotificationPreferences() {
         queryKey: settingsQueryKeys.notifications(orgId || ''),
         queryFn: () => fetchNotificationPreferences(orgId!),
         enabled: !!orgId,
-        staleTime: 60000,
-        placeholderData: DEFAULT_NOTIFICATION_PREFS,
+        placeholderData: (previousData) => previousData ?? DEFAULT_NOTIFICATION_PREFS,
     })
 }
 
@@ -424,7 +423,7 @@ export function useIntegrations() {
         queryKey: settingsQueryKeys.integrations(orgId || ''),
         queryFn: () => fetchIntegrations(orgId!),
         enabled: !!orgId,
-        staleTime: 60000,
+        placeholderData: (previousData) => previousData,
     })
 }
 

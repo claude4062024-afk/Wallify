@@ -31,12 +31,13 @@ export default function AuthCallback() {
                 // Check if user already has a profile
                 const { data: existingProfile, error: profileCheckError } = await supabase
                     .from('profiles')
-                    .select('id')
+                    .select('id, org_id')
                     .eq('id', session.user.id)
                     .maybeSingle()
 
                 if (profileCheckError) {
                     console.error('Error checking profile:', profileCheckError)
+                    // Don't fail here - try to create profile anyway
                 }
 
                 if (!existingProfile) {
@@ -66,28 +67,44 @@ export default function AuthCallback() {
 
                     if (orgError) {
                         console.error('Error creating organization:', orgError)
-                        // If it's a conflict or policy error, we might want to know more
-                        setError(orgError.message)
-                        processing.current = false
-                        return
+                        
+                        // Check if organization already exists for this user
+                        const { data: existingOrg } = await supabase
+                            .from('organizations')
+                            .select('id')
+                            .eq('slug', orgSlug)
+                            .single()
+                        
+                        if (!existingOrg) {
+                            setError(`Failed to create organization: ${orgError.message}`)
+                            processing.current = false
+                            return
+                        }
                     }
 
-                    // Create profile
+                    // Create profile with upsert to handle duplicates gracefully
                     const { error: profileError } = await supabase
                         .from('profiles')
-                        .insert({
+                        .upsert({
                             id: session.user.id,
-                            org_id: org.id,
+                            org_id: org?.id,
                             full_name: userName,
                             avatar_url: userData?.avatar_url || null,
                             role: 'owner',
+                        }, {
+                            onConflict: 'id',
+                            ignoreDuplicates: false
                         })
 
                     if (profileError) {
                         console.error('Error creating profile:', profileError)
-                        setError(profileError.message)
-                        processing.current = false
-                        return
+                        
+                        // If it's a duplicate key error, it's actually ok - profile exists
+                        if (!profileError.message.includes('duplicate key')) {
+                            setError(`Failed to create profile: ${profileError.message}`)
+                            processing.current = false
+                            return
+                        }
                     }
                 }
 

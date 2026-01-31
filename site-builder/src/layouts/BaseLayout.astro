@@ -1,0 +1,157 @@
+---
+/**
+ * BaseLayout
+ * Main layout wrapper for all generated testimonial pages
+ * 
+ * Following Skill.md requirements:
+ * - SEO optimized with Open Graph and Twitter cards
+ * - Structured data (JSON-LD) for rich snippets
+ * - Core Web Vitals optimized
+ * - Accessibility compliant
+ */
+
+import type { SiteConfig, Testimonial } from '../lib/supabase';
+import { generateThemeStyles, generateStructuredData } from '../lib/themes';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  config: SiteConfig;
+  testimonials?: Testimonial[];
+  title?: string;
+  description?: string;
+}
+
+const { config, testimonials = [], title, description } = Astro.props;
+
+const theme = generateThemeStyles(config);
+const pageTitle = title || config.meta_title || `${config.company_name} - Customer Stories`;
+const pageDescription = description || config.meta_description || `See what customers are saying about ${config.company_name}`;
+const ogImage = config.og_image || `https://via.placeholder.com/1200x630/f59e0b/ffffff?text=${encodeURIComponent(config.company_name)}`;
+const canonicalUrl = config.custom_domain 
+  ? `https://${config.custom_domain}` 
+  : `https://love.wallify.io/${config.slug}`;
+
+const structuredData = generateStructuredData(config, testimonials);
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="generator" content={Astro.generator} />
+  
+  <!-- Primary Meta Tags -->
+  <title>{pageTitle}</title>
+  <meta name="title" content={pageTitle} />
+  <meta name="description" content={pageDescription} />
+  
+  <!-- Canonical URL -->
+  <link rel="canonical" href={canonicalUrl} />
+  
+  <!-- Favicon -->
+  {config.logo_url && <link rel="icon" type="image/png" href={config.logo_url} />}
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content={canonicalUrl} />
+  <meta property="og:title" content={pageTitle} />
+  <meta property="og:description" content={pageDescription} />
+  <meta property="og:image" content={ogImage} />
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content={canonicalUrl} />
+  <meta property="twitter:title" content={pageTitle} />
+  <meta property="twitter:description" content={pageDescription} />
+  <meta property="twitter:image" content={ogImage} />
+  
+  <!-- Font Import -->
+  {theme.fontImport && (
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href={theme.fontImport} rel="stylesheet" />
+  )}
+  
+  <!-- Structured Data -->
+  <script type="application/ld+json" set:html={structuredData} />
+  
+  <!-- Theme Styles -->
+  <style define:vars={{
+    primaryColor: theme.primaryColor,
+    secondaryColor: theme.secondaryColor,
+    fontFamily: theme.fontFamily,
+    borderRadius: theme.borderRadius,
+    cardShadow: theme.cardShadow,
+  }}>
+    :root {
+      --color-primary: var(--primaryColor);
+      --color-secondary: var(--secondaryColor);
+      --font-family: var(--fontFamily);
+      --border-radius: var(--borderRadius);
+      --card-shadow: var(--cardShadow);
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    html {
+      scroll-behavior: smooth;
+    }
+    
+    body {
+      font-family: var(--font-family);
+      line-height: 1.6;
+      color: #1c1917;
+      background-color: #fafaf9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    main {
+      flex: 1;
+      padding: 2rem 0;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+    
+    h1, h2, h3 {
+      line-height: 1.3;
+    }
+    
+    a {
+      color: var(--color-primary);
+    }
+    
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+  
+  <!-- Custom CSS -->
+  {config.custom_css && (
+    <style set:html={config.custom_css} />
+  )}
+</head>
+<body>
+  {config.show_header && <Header config={config} />}
+  
+  <main>
+    <div class="container">
+      <slot />
+    </div>
+  </main>
+  
+  {config.show_footer && <Footer config={config} />}
+</body>
+</html>

@@ -1,0 +1,65 @@
+---
+/**
+ * TestimonialGrid Component
+ * Displays testimonials in a responsive grid layout
+ */
+
+import type { Testimonial } from '../lib/supabase';
+import TestimonialCard from './TestimonialCard.astro';
+
+interface Props {
+  testimonials: Testimonial[];
+  columns?: 1 | 2 | 3 | 4;
+}
+
+const { testimonials, columns = 3 } = Astro.props;
+---
+
+<div class={`testimonial-grid columns-${columns}`}>
+  {testimonials.map((testimonial) => (
+    <TestimonialCard testimonial={testimonial} />
+  ))}
+</div>
+
+<style>
+  .testimonial-grid {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .columns-1 {
+    grid-template-columns: 1fr;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .columns-2 {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  .columns-3 {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  .columns-4 {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  @media (min-width: 640px) {
+    .columns-2,
+    .columns-3,
+    .columns-4 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .columns-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .columns-4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+</style>

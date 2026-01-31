@@ -1,0 +1,205 @@
+---
+/**
+ * Dynamic Route - Generates all customer testimonial pages
+ * 
+ * Following Skill.md:
+ * - Single route generates all customer sites
+ * - Static generation with getStaticPaths
+ * - Lighthouse score > 95 target
+ */
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import TestimonialGrid from '../components/TestimonialGrid.astro';
+import TestimonialCarousel from '../components/TestimonialCarousel.astro';
+import ShareButtons from '../components/ShareButtons.astro';
+import { getAllActiveSites, getTestimonials, type SiteConfig, type Testimonial } from '../lib/supabase';
+
+export async function getStaticPaths() {
+  // Fetch all active customer sites
+  const sites = await getAllActiveSites();
+  
+  return sites.map((site) => ({
+    params: { slug: site.slug },
+    props: { siteId: site.id, projectId: site.project_id },
+  }));
+}
+
+interface Props {
+  siteId: string;
+  projectId: string;
+}
+
+const { slug } = Astro.params;
+const { projectId } = Astro.props;
+
+// Fetch site config and testimonials
+const sites = await getAllActiveSites();
+const config = sites.find((s) => s.slug === slug);
+
+if (!config) {
+  return Astro.redirect('/404');
+}
+
+const testimonials = await getTestimonials(projectId);
+
+// Group testimonials by layout requirements
+const featuredTestimonials = testimonials.filter((t) => (t.quality_score || 0) >= 0.8);
+const regularTestimonials = testimonials.filter((t) => (t.quality_score || 0) < 0.8);
+
+// Determine layout component based on config
+const useCarousel = config.layout === 'carousel';
+const columns = config.layout === 'masonry' ? 3 : config.layout === 'list' ? 1 : 3;
+
+const pageUrl = config.custom_domain 
+  ? `https://${config.custom_domain}` 
+  : `https://love.wallify.io/${config.slug}`;
+---
+
+<BaseLayout config={config} testimonials={testimonials}>
+  <!-- Hero Section -->
+  <section class="hero">
+    <h1 class="hero-title">
+      What our customers are saying
+    </h1>
+    <p class="hero-subtitle">
+      Real stories from real {config.company_name} users
+    </p>
+    
+    <div class="hero-actions">
+      <ShareButtons 
+        url={pageUrl}
+        title={`${config.company_name} Customer Stories`}
+        description={`See what customers are saying about ${config.company_name}`}
+      />
+    </div>
+  </section>
+
+  <!-- Featured Testimonials (if any high quality ones) -->
+  {featuredTestimonials.length > 0 && (
+    <section class="featured-section">
+      <h2 class="section-title">Featured Stories</h2>
+      {useCarousel ? (
+        <TestimonialCarousel testimonials={featuredTestimonials.slice(0, 6)} />
+      ) : (
+        <TestimonialGrid testimonials={featuredTestimonials.slice(0, 6)} columns={columns} />
+      )}
+    </section>
+  )}
+
+  <!-- All Testimonials -->
+  <section class="testimonials-section">
+    {featuredTestimonials.length > 0 && (
+      <h2 class="section-title">More Stories</h2>
+    )}
+    {useCarousel ? (
+      <TestimonialCarousel testimonials={regularTestimonials} />
+    ) : (
+      <TestimonialGrid testimonials={regularTestimonials} columns={columns} />
+    )}
+  </section>
+
+  <!-- Stats Section -->
+  {testimonials.length >= 5 && (
+    <section class="stats-section">
+      <div class="stat">
+        <span class="stat-number">{testimonials.length}</span>
+        <span class="stat-label">Happy Customers</span>
+      </div>
+      {testimonials.some((t) => t.rating) && (
+        <div class="stat">
+          <span class="stat-number">
+            {(testimonials.filter((t) => t.rating).reduce((sum, t) => sum + (t.rating || 0), 0) / testimonials.filter((t) => t.rating).length).toFixed(1)}
+          </span>
+          <span class="stat-label">Average Rating</span>
+        </div>
+      )}
+    </section>
+  )}
+
+  <!-- Empty State -->
+  {testimonials.length === 0 && (
+    <section class="empty-state">
+      <p>No testimonials yet. Check back soon!</p>
+    </section>
+  )}
+</BaseLayout>
+
+<style>
+  .hero {
+    text-align: center;
+    padding: 3rem 0;
+    margin-bottom: 2rem;
+  }
+
+  .hero-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1c1917;
+    margin-bottom: 0.5rem;
+  }
+
+  @media (min-width: 640px) {
+    .hero-title {
+      font-size: 3rem;
+    }
+  }
+
+  .hero-subtitle {
+    font-size: 1.125rem;
+    color: #78716c;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-actions {
+    display: flex;
+    justify-content: center;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1c1917;
+    margin-bottom: 1.5rem;
+  }
+
+  .featured-section {
+    margin-bottom: 3rem;
+  }
+
+  .testimonials-section {
+    margin-bottom: 3rem;
+  }
+
+  .stats-section {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    padding: 2rem;
+    background: white;
+    border-radius: var(--border-radius, 12px);
+    box-shadow: var(--card-shadow);
+    margin-bottom: 2rem;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-number {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--color-primary, #f59e0b);
+  }
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: #78716c;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #78716c;
+  }
+</style>

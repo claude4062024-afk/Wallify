@@ -1,11 +1,12 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import Home from './pages/Home'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
 import Testimonials from './pages/Testimonials'
+import Connections from './pages/Connections'
 import Widgets from './pages/Widgets'
+import SiteSettings from './pages/SiteSettings'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
 import AuthCallback from './pages/AuthCallback'
@@ -17,7 +18,14 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 10, // 10 minutes (formerly cacheTime)
       retry: 1,
+      refetchOnWindowFocus: false, // Prevent jarring refetches
+      refetchOnMount: true,
+      refetchOnReconnect: true,
+    },
+    mutations: {
+      retry: 0,
     },
   },
 })
@@ -27,7 +35,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Router>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
@@ -50,10 +58,26 @@ function App() {
           }
         />
         <Route
+          path="/connections"
+          element={
+            <ProtectedRoute>
+              <Connections />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/widgets"
           element={
             <ProtectedRoute>
               <Widgets />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/site-settings"
+          element={
+            <ProtectedRoute>
+              <SiteSettings />
             </ProtectedRoute>
           }
         />

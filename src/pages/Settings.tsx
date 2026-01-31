@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { DashboardLayout } from '../components/layout/DashboardLayout'
+import { LoadingOverlay } from '../components/ui/LoadingOverlay'
 import { useAuth } from '../hooks/useAuth'
 import { useOrganization, useTeamMembers, useUsageStats, useUpdateOrganization, useRemoveMember, useDeleteOrganization } from '../hooks/useOrganization'
 import { useProjects, useCreateProject, useDeleteProject, useRegenerateApiKey, useAddDomain, useRemoveDomain } from '../hooks/useProjects'
@@ -377,9 +378,7 @@ export default function Settings() {
                                     </button>
                                 </div>
                             ) : isOrgActuallyLoading ? (
-                                <div className="flex items-center justify-center py-12">
-                                    <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-                                </div>
+                                <LoadingOverlay message="Loading organization..." />
                             ) : (
                             <>
                             {/* Organization Info */}

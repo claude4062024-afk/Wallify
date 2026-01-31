@@ -314,8 +314,8 @@ export function useProjects() {
         queryKey: projectQueryKeys.list(orgId || ''),
         queryFn: () => fetchProjects(orgId!),
         enabled: !!orgId,
-        staleTime: 30000, // Consider data fresh for 30 seconds
         gcTime: 300000, // Keep in cache for 5 minutes
+        placeholderData: (previousData) => previousData,
     })
     
     // Return loading state correctly - only truly loading if enabled and fetching
@@ -333,7 +333,7 @@ export function useProject(projectId: string | undefined) {
         queryKey: projectQueryKeys.detail(projectId || ''),
         queryFn: () => fetchProject(projectId!),
         enabled: !!projectId,
-        staleTime: 30000,
+        placeholderData: (previousData) => previousData,
     })
 }
 

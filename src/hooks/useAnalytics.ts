@@ -471,8 +471,7 @@ export function useAnalyticsMetrics(projectId: string, range: DateRange) {
         queryFn: () => fetchAnalyticsMetrics(projectId, range),
         enabled: !!projectId,
         refetchInterval: 60000, // Refresh every minute
-        staleTime: 30000,
-        placeholderData: {
+        placeholderData: (previousData) => previousData ?? {
             totalViews: 0,
             totalClicks: 0,
             conversionRate: 0,
@@ -493,7 +492,7 @@ export function useAnalyticsTimeSeries(projectId: string, range: DateRange) {
         queryFn: () => fetchTimeSeries(projectId, range),
         enabled: !!projectId,
         refetchInterval: 60000,
-        staleTime: 30000,
+        placeholderData: (previousData) => previousData,
     })
 }
 
@@ -506,7 +505,7 @@ export function useTestimonialPerformance(projectId: string, range: DateRange) {
         queryFn: () => fetchTestimonialPerformance(projectId, range),
         enabled: !!projectId,
         refetchInterval: 60000,
-        staleTime: 30000,
+        placeholderData: (previousData) => previousData,
     })
 }
 
@@ -519,7 +518,7 @@ export function useSourceBreakdown(projectId: string, range: DateRange) {
         queryFn: () => fetchSourceBreakdown(projectId),
         enabled: !!projectId,
         refetchInterval: 60000,
-        staleTime: 30000,
+        placeholderData: (previousData) => previousData,
     })
 }
 
@@ -532,6 +531,6 @@ export function usePageEngagement(projectId: string, range: DateRange) {
         queryFn: () => fetchPageEngagement(projectId, range),
         enabled: !!projectId,
         refetchInterval: 60000,
-        staleTime: 30000,
+        placeholderData: (previousData) => previousData,
     })
 }

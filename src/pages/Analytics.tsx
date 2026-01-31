@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { DashboardLayout } from '../components/layout/DashboardLayout'
+import { LoadingOverlay, RefetchingIndicator } from '../components/ui/LoadingOverlay'
 import {
     Eye,
     MousePointerClick,
@@ -141,11 +142,17 @@ export default function Analytics() {
     const { project, isLoading: projectLoading, hasProjects, hasOrg } = useCurrentProject()
     const projectId = project?.id || ''
 
-    const { data: metrics, isLoading: metricsLoading } = useAnalyticsMetrics(projectId, dateRange)
-    const { data: timeSeries, isLoading: timeSeriesLoading } = useAnalyticsTimeSeries(projectId, dateRange)
-    const { data: testimonials, isLoading: testimonialsLoading } = useTestimonialPerformance(projectId, dateRange)
-    const { data: sources, isLoading: sourcesLoading } = useSourceBreakdown(projectId, dateRange)
-    const { data: pages, isLoading: pagesLoading } = usePageEngagement(projectId, dateRange)
+    // Only fetch analytics when we have a valid project ID
+    const { data: metrics, isLoading: metricsLoading, isFetching: metricsFetching } = useAnalyticsMetrics(projectId, dateRange)
+    const { data: timeSeries, isLoading: timeSeriesLoading, isFetching: timeSeriesFetching } = useAnalyticsTimeSeries(projectId, dateRange)
+    const { data: testimonials, isLoading: testimonialsLoading, isFetching: testimonialsFetching } = useTestimonialPerformance(projectId, dateRange)
+    const { data: sources, isLoading: sourcesLoading, isFetching: sourcesFetching } = useSourceBreakdown(projectId, dateRange)
+    const { data: pages, isLoading: pagesLoading, isFetching: pagesFetching } = usePageEngagement(projectId, dateRange)
+
+    // Determine if we're in the initial loading state (no data yet)
+    const isInitialLoading = projectLoading || (hasProjects && metricsLoading)
+    // Determine if we're refetching (showing stale data while fetching)
+    const isRefetching = metricsFetching || timeSeriesFetching || testimonialsFetching || sourcesFetching || pagesFetching
 
     const dateRangeOptions: { value: DateRange; label: string }[] = [
         { value: '7d', label: 'Last 7 days' },
@@ -175,12 +182,10 @@ export default function Analytics() {
     }
 
     // Show project loading state
-    if (projectLoading) {
+    if (isInitialLoading) {
         return (
             <DashboardLayout>
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-                </div>
+                <LoadingOverlay message="Loading analytics..." />
             </DashboardLayout>
         )
     }
@@ -195,18 +200,17 @@ export default function Analytics() {
                         Track how your testimonials are performing.
                     </p>
                 </div>
-                <LiveIndicator />
+                <div className="flex items-center gap-3">
+                    {isRefetching && !isInitialLoading && <RefetchingIndicator />}
+                    <LiveIndicator />
+                </div>
             </div>
 
-            {/* Loading State */}
-            {projectLoading && (
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-                </div>
-            )}
+            {/* Remove old loading state */}
+            {/* {projectLoading && (...)} */}
 
             {/* No Organization State */}
-            {!projectLoading && !hasOrg && (
+            {!isInitialLoading && !hasOrg && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-6 mb-6">
                     <div className="flex items-start gap-3">
                         <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5" />
@@ -221,7 +225,7 @@ export default function Analytics() {
             )}
 
             {/* No Project State */}
-            {!projectLoading && hasOrg && !hasProjects && (
+            {!isInitialLoading && hasOrg && !hasProjects && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-6 mb-6">
                     <div className="flex items-start gap-3">
                         <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5" />
@@ -235,14 +239,16 @@ export default function Analytics() {
                 </div>
             )}
 
+            {/* Only show content when we have projects and data */}
+            {hasProjects && (
+                <>
             {/* Date Range Picker */}
             <div className="flex flex-wrap items-center gap-2 mb-8">
                 {dateRangeOptions.map((option) => (
                     <button
                         key={option.value}
                         onClick={() => setDateRange(option.value)}
-                        disabled={!hasProjects}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors disabled:opacity-50 ${
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                             dateRange === option.value
                                 ? 'bg-amber-500 text-white'
                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -543,6 +549,8 @@ export default function Analytics() {
                     </div>
                 )}
             </div>
+            </>
+            )}
         </DashboardLayout>
     )
 }

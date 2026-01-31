@@ -1,31 +1,54 @@
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Inter", "sans-serif";
-  --font-body: "Satoshi", "sans-serif";
+  /* Typography - Satoshi for headings, Manrope for body */
+  --font-display: "Satoshi", "Inter", "sans-serif";
+  --font-body: "Manrope", "Inter", "sans-serif";
 
+  /* Wallify Design System Colors */
+  /* Primary - Amber */
+  --color-amber-400: #FBBF24;
+  --color-amber-500: #F59E0B;
+  --color-amber-600: #D97706;
+  --color-orange-500: #F97316;
+
+  /* Neutrals - Stone */
+  --color-stone-50: #FAFAF9;
+  --color-stone-100: #F5F5F4;
+  --color-stone-200: #E7E5E4;
+  --color-stone-300: #D6D3D1;
+  --color-stone-400: #A8A29E;
+  --color-stone-500: #78716C;
+  --color-stone-600: #57534E;
+  --color-stone-700: #44403C;
+  --color-stone-800: #292524;
+  --color-stone-900: #1C1917;
+  --color-stone-950: #0C0A09;
+
+  /* Legacy colors for backward compatibility */
   --color-deep-space: #020617;
-  --color-molt-bg: #050505;
-  --color-molt-surface: #0d111c;
+  --color-molt-bg: #0C0A09;
+  --color-molt-surface: #1C1917;
   --color-molt-red: #ff3d5e;
   --color-molt-teal: #43e9bd;
-  --color-molt-muted: #94a3b8;
+  --color-molt-muted: #78716C;
 
-  --color-border: #1e293b;
-  --color-background: #050505;
-  --color-foreground: #f8fafc;
+  /* Semantic colors */
+  --color-border: #292524;
+  --color-background: #0C0A09;
+  --color-foreground: #FAFAF9;
 
-  --color-primary: #ff3d5e;
-  --color-primary-foreground: #ffffff;
+  --color-primary: #F59E0B;
+  --color-primary-foreground: #0C0A09;
 
-  --color-secondary: #0f172a;
-  --color-secondary-foreground: #f8fafc;
+  --color-secondary: #1C1917;
+  --color-secondary-foreground: #FAFAF9;
 
-  --color-muted: #1e293b;
-  --color-muted-foreground: #94a3b8;
+  --color-muted: #292524;
+  --color-muted-foreground: #78716C;
 
-  --color-accent: #43e9bd;
-  --color-accent-foreground: #020617;
+  --color-accent: #F97316;
+  --color-accent-foreground: #0C0A09;
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
@@ -53,30 +76,41 @@
 
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 346.8 100% 62.4%;
-    --primary-foreground: 355.7 100% 97.3%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 164.7 78.4% 58.6%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 346.8 100% 62.4%;
+    /* Amber/Stone theme */
+    --background: 24 10% 4%; /* stone-950 */
+    --foreground: 24 6% 98%; /* stone-50 */
+    --card: 24 10% 10%; /* stone-900 */
+    --card-foreground: 24 6% 98%;
+    --popover: 24 10% 10%;
+    --popover-foreground: 24 6% 98%;
+    --primary: 38 92% 50%; /* amber-500 */
+    --primary-foreground: 24 10% 4%;
+    --secondary: 24 10% 10%;
+    --secondary-foreground: 24 6% 98%;
+    --muted: 24 10% 15%;
+    --muted-foreground: 24 6% 45%;
+    --accent: 25 95% 53%; /* orange-500 */
+    --accent-foreground: 24 10% 4%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 24 6% 98%;
+    --border: 24 10% 15%;
+    --input: 24 10% 15%;
+    --ring: 38 92% 50%;
     --radius: 0.75rem;
   }
 
   * {
     border-color: var(--color-border);
+  }
+
+  /* Ensure all interactive elements show pointer cursor */
+  button,
+  [role="button"],
+  input[type="submit"],
+  input[type="button"],
+  input[type="reset"],
+  a {
+    cursor: pointer;
   }
 
   body {
@@ -89,6 +123,7 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
+    font-weight: 700;
   }
 }
 

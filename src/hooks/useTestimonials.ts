@@ -3,12 +3,26 @@ import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 
 type Testimonial = Database['public']['Tables']['testimonials']['Row']
+type TestimonialInsert = Database['public']['Tables']['testimonials']['Insert']
 type TestimonialStatus = Database['public']['Enums']['testimonial_status']
+type TestimonialSource = Database['public']['Enums']['testimonial_source']
 
 interface TestimonialsFilters {
     projectId: string
     status?: TestimonialStatus | 'all'
     searchQuery?: string
+}
+
+interface CreateTestimonialData {
+    project_id: string
+    content_text: string
+    author_name: string
+    author_title?: string | null
+    author_company?: string | null
+    author_email?: string | null
+    author_avatar?: string | null
+    source?: TestimonialSource
+    rating?: number | null
 }
 
 async function fetchTestimonials({ projectId, status, searchQuery }: TestimonialsFilters) {
@@ -62,6 +76,40 @@ export function useTestimonials(filters: TestimonialsFilters) {
     })
 }
 
+export function useCreateTestimonial() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async (data: CreateTestimonialData) => {
+            const insertData: TestimonialInsert = {
+                project_id: data.project_id,
+                content_text: data.content_text,
+                author_name: data.author_name,
+                author_title: data.author_title || null,
+                author_company: data.author_company || null,
+                author_email: data.author_email || null,
+                author_avatar: data.author_avatar || null,
+                source: data.source || 'direct',
+                rating: data.rating || null,
+                status: 'pending',
+                verification_status: 'unverified',
+            }
+
+            const { data: testimonial, error } = await supabase
+                .from('testimonials')
+                .insert(insertData)
+                .select()
+                .single()
+
+            if (error) throw new Error(error.message)
+            return testimonial
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['testimonials'] })
+        },
+    })
+}
+
 export function useUpdateTestimonialStatus() {
     const queryClient = useQueryClient()
 
@@ -85,4 +133,4 @@ export function useDeleteTestimonial() {
     })
 }
 
-export type { Testimonial, TestimonialStatus, TestimonialsFilters }
+export type { Testimonial, TestimonialStatus, TestimonialsFilters, CreateTestimonialData, TestimonialSource }

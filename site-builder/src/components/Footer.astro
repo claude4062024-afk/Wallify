@@ -1,0 +1,92 @@
+---
+/**
+ * Footer Component
+ * Site footer with optional custom text and powered by Wallify
+ */
+
+import type { SiteConfig } from '../lib/supabase';
+
+interface Props {
+  config: SiteConfig;
+}
+
+const { config } = Astro.props;
+const currentYear = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="footer-container">
+    {config.footer_text && (
+      <p class="footer-text">{config.footer_text}</p>
+    )}
+
+    <div class="footer-bottom">
+      <p class="copyright">
+        © {currentYear} {config.company_name}. All rights reserved.
+      </p>
+      <a 
+        href="https://wallify.io" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        class="powered-by"
+      >
+        Powered by <strong>Wallify</strong>
+      </a>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    background: #1c1917;
+    color: #a8a29e;
+    padding: 2rem 0;
+    margin-top: auto;
+  }
+
+  .footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  .footer-text {
+    text-align: center;
+    margin: 0 0 1.5rem 0;
+    font-size: 0.875rem;
+  }
+
+  .footer-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: center;
+    font-size: 0.75rem;
+  }
+
+  @media (min-width: 640px) {
+    .footer-bottom {
+      flex-direction: row;
+      justify-content: space-between;
+    }
+  }
+
+  .copyright {
+    margin: 0;
+  }
+
+  .powered-by {
+    color: #a8a29e;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .powered-by:hover {
+    color: #f59e0b;
+  }
+
+  .powered-by strong {
+    color: #fafaf9;
+  }
+</style>

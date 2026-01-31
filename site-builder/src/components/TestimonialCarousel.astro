@@ -1,0 +1,148 @@
+---
+/**
+ * TestimonialCarousel Component
+ * Horizontal scrolling carousel of testimonials
+ * Uses CSS scroll-snap for smooth native scrolling
+ */
+
+import type { Testimonial } from '../lib/supabase';
+import TestimonialCard from './TestimonialCard.astro';
+
+interface Props {
+  testimonials: Testimonial[];
+}
+
+const { testimonials } = Astro.props;
+---
+
+<div class="carousel-container">
+  <div class="carousel-track">
+    {testimonials.map((testimonial) => (
+      <div class="carousel-slide">
+        <TestimonialCard testimonial={testimonial} />
+      </div>
+    ))}
+  </div>
+  
+  <!-- Navigation dots -->
+  <div class="carousel-dots" role="tablist" aria-label="Testimonial navigation">
+    {testimonials.map((_, index) => (
+      <button
+        class="carousel-dot"
+        role="tab"
+        aria-label={`Go to testimonial ${index + 1}`}
+        data-slide={index}
+      />
+    ))}
+  </div>
+</div>
+
+<style>
+  .carousel-container {
+    position: relative;
+    width: 100%;
+  }
+
+  .carousel-track {
+    display: flex;
+    gap: 1.5rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.5rem;
+    margin: -0.5rem;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .carousel-track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .carousel-track {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .carousel-slide {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+    min-width: 0;
+  }
+
+  @media (min-width: 640px) {
+    .carousel-slide {
+      flex: 0 0 calc(50% - 0.75rem);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .carousel-slide {
+      flex: 0 0 calc(33.333% - 1rem);
+    }
+  }
+
+  .carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .carousel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #d6d3d1;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: background-color 0.2s, transform 0.2s;
+  }
+
+  .carousel-dot:hover,
+  .carousel-dot:focus {
+    background: var(--color-primary, #f59e0b);
+    transform: scale(1.2);
+    outline: none;
+  }
+
+  .carousel-dot.active {
+    background: var(--color-primary, #f59e0b);
+  }
+</style>
+
+<script>
+  // Simple carousel navigation
+  document.querySelectorAll('.carousel-container').forEach((container) => {
+    const track = container.querySelector('.carousel-track');
+    const dots = container.querySelectorAll('.carousel-dot');
+
+    dots.forEach((dot, index) => {
+      dot.addEventListener('click', () => {
+        const slides = track?.querySelectorAll('.carousel-slide');
+        if (slides && slides[index]) {
+          slides[index].scrollIntoView({ behavior: 'smooth', inline: 'start' });
+        }
+      });
+    });
+
+    // Update active dot on scroll
+    track?.addEventListener('scroll', () => {
+      const slides = track.querySelectorAll('.carousel-slide');
+      let activeIndex = 0;
+      
+      slides.forEach((slide, index) => {
+        const rect = slide.getBoundingClientRect();
+        const trackRect = track.getBoundingClientRect();
+        if (rect.left >= trackRect.left && rect.left < trackRect.left + trackRect.width / 2) {
+          activeIndex = index;
+        }
+      });
+
+      dots.forEach((dot, index) => {
+        dot.classList.toggle('active', index === activeIndex);
+      });
+    });
+  });
+</script>

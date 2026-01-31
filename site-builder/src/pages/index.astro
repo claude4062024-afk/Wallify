@@ -1,0 +1,96 @@
+---
+/**
+ * Index Page - Landing for site-builder
+ * Shows available demo sites
+ */
+import { getAllActiveSites } from '../lib/supabase';
+
+const sites = await getAllActiveSites();
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wallify Site Builder - Development</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #fafaf9;
+      color: #1c1917;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 600px;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: #1c1917;
+    }
+    .subtitle {
+      color: #78716c;
+      margin-bottom: 2rem;
+    }
+    .sites-list {
+      text-align: left;
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .sites-list h2 {
+      font-size: 1rem;
+      color: #78716c;
+      margin-bottom: 1rem;
+    }
+    .site-link {
+      display: block;
+      padding: 0.75rem 1rem;
+      margin: 0.5rem 0;
+      background: #fef3c7;
+      border-radius: 8px;
+      color: #92400e;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .site-link:hover {
+      background: #fde68a;
+    }
+    .no-sites {
+      color: #78716c;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧱 Wallify Site Builder</h1>
+    <p class="subtitle">Development Server</p>
+    
+    <div class="sites-list">
+      <h2>Available Sites</h2>
+      {sites.length > 0 ? (
+        sites.map((site: any) => (
+          <a href={`/${site.slug}`} class="site-link">
+            /{site.slug} → {site.company_name || site.slug}
+          </a>
+        ))
+      ) : (
+        <p class="no-sites">No sites configured yet. Create a project in the dashboard.</p>
+      )}
+      
+      <a href="/demo" class="site-link">
+        /demo → Demo Site (Mock Data)
+      </a>
+    </div>
+  </div>
+</body>
+</html>

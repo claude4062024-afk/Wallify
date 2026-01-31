@@ -3,7 +3,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
     LayoutDashboard,
     MessageSquareQuote,
+    Link2,
     LayoutGrid,
+    Globe,
     BarChart3,
     Settings,
     LogOut,
@@ -15,7 +17,9 @@ import { useAuth } from '../../hooks/useAuth'
 const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Testimonials', href: '/testimonials', icon: MessageSquareQuote },
+    { name: 'Connections', href: '/connections', icon: Link2 },
     { name: 'Widgets', href: '/widgets', icon: LayoutGrid },
+    { name: 'Site Settings', href: '/site-settings', icon: Globe },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
     { name: 'Settings', href: '/settings', icon: Settings },
 ]
@@ -44,17 +48,24 @@ export function Sidebar({ isMobileOpen, onMobileClose }: SidebarProps) {
         navigate('/login')
     }
 
+    const handleWallifyClick = () => {
+        navigate('/')
+        onMobileClose()
+    }
+
     const sidebarContent = (
         <div className="flex flex-col h-full">
             {/* Logo */}
             <div className="p-6 flex items-center justify-between">
-                <Link to="/dashboard" className="text-2xl font-bold text-amber-500" onClick={onMobileClose}>
+                <button onClick={handleWallifyClick} className="text-2xl font-bold text-amber-500 hover:text-amber-600 transition-colors cursor-pointer">
                     Wallify
-                </Link>
+                </button>
                 {/* Mobile close button */}
                 <button
+                    type="button"
                     onClick={onMobileClose}
                     className="lg:hidden p-2 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Close mobile menu"
                 >
                     <X className="w-5 h-5" />
                 </button>
@@ -161,8 +172,10 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
         <header className="sticky top-0 z-30 lg:hidden bg-molt-surface/80 backdrop-blur-md border-b border-border">
             <div className="flex items-center justify-between px-4 h-16">
                 <button
+                    type="button"
                     onClick={onMenuClick}
                     className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Open menu"
                 >
                     <Menu className="w-6 h-6" />
                 </button>
