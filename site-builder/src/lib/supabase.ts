@@ -51,6 +51,8 @@ export interface SiteConfig {
   footer_text: string | null;
   custom_css: string | null;
   custom_domain: string | null;
+  subdomain: string | null;
+  page_path: string; // e.g., 'wall', 'love', 'testimonials'
   meta_title: string | null;
   meta_description: string | null;
   og_image: string | null;

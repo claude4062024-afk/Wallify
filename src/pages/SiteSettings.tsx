@@ -710,7 +710,7 @@ export default function SiteSettingsPage() {
                                     </label>
                                     <div className="flex items-center gap-2">
                                         <div className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-mono text-sm">
-                                            https://{siteSettings?.subdomain || config.subdomain || project?.name?.toLowerCase().replace(/\s+/g, '-') || 'yourcompany'}.wallify.com
+                                            https://{siteSettings?.subdomain || config.subdomain || project?.name?.toLowerCase().replace(/\s+/g, '-') || 'yourcompany'}.wallify.com/{config.page_path || 'wall'}
                                         </div>
                                         <button
                                             onClick={copySubdomain}
@@ -733,6 +733,42 @@ export default function SiteSettingsPage() {
                                                 <ExternalLink className="w-5 h-5 text-gray-500" />
                                             </a>
                                         )}
+                                    </div>
+                                </div>
+
+                                {/* Page Path / Route */}
+                                <div className="pt-4 border-t border-gray-200">
+                                    <label className="block text-sm font-medium text-gray-900 mb-2">
+                                        Page Path
+                                    </label>
+                                    <p className="text-sm text-gray-500 mb-3">
+                                        The URL path where your testimonials appear
+                                    </p>
+                                    <div className="flex gap-2 items-center">
+                                        <span className="text-gray-500">/</span>
+                                        <div className="flex gap-2">
+                                            {['wall', 'love', 'testimonials', 'reviews'].map((path) => (
+                                                <button
+                                                    key={path}
+                                                    onClick={() => handleConfigChange({ page_path: path })}
+                                                    className={`px-4 py-2 border rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                                                        config.page_path === path
+                                                            ? 'border-amber-500 bg-amber-50 text-amber-700'
+                                                            : 'border-gray-300 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    /{path}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <span className="text-gray-400 mx-2">or</span>
+                                        <input
+                                            type="text"
+                                            value={!['wall', 'love', 'testimonials', 'reviews'].includes(config.page_path || 'wall') ? config.page_path : ''}
+                                            onChange={(e) => handleConfigChange({ page_path: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                                            placeholder="custom-path"
+                                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                        />
                                     </div>
                                 </div>
 

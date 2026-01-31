@@ -83,6 +83,8 @@ export interface SiteSettings {
     custom_domain: string | null
     domain_verified: boolean
     domain_verification_token: string | null
+    page_path: string // URL path e.g., 'wall', 'love', 'testimonials'
+    is_published: boolean
     
     // JSONB configs
     config: BrandingConfig
@@ -144,6 +146,8 @@ export interface FlattenedSiteConfig {
     subdomain: string | null
     custom_domain: string | null
     domain_verified: boolean
+    page_path: string
+    is_published: boolean
     
     // SEO
     meta_title: string | null
@@ -216,6 +220,8 @@ export const defaultFlattenedConfig: FlattenedSiteConfig = {
     subdomain: null,
     custom_domain: null,
     domain_verified: false,
+    page_path: 'wall',
+    is_published: false,
     meta_title: defaultSeoConfig.meta_title,
     meta_description: defaultSeoConfig.meta_description,
     og_image_url: defaultSeoConfig.og_image_url,
@@ -266,6 +272,8 @@ export function flattenSiteSettings(settings: SiteSettings): FlattenedSiteConfig
         subdomain: settings.subdomain,
         custom_domain: settings.custom_domain,
         domain_verified: settings.domain_verified,
+        page_path: settings.page_path || 'wall',
+        is_published: settings.is_published || false,
         
         // SEO from seo_config JSONB
         meta_title: settings.seo_config.meta_title,

@@ -68,17 +68,63 @@ jobs:
         run: npm ci
 
       # =========================================================================
-      # 4. BUILD (ISOLATED MODE)
+      # 4. FETCH SITE CONFIG (subdomain, custom domain, path)
+      # =========================================================================
+      - name: Fetch site configuration
+        id: site_config
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          # Fetch site settings from Supabase
+          RESPONSE=$(curl -s -X GET \
+            "${SUPABASE_URL}/rest/v1/site_settings?project_id=eq.${{ inputs.project_id }}&select=subdomain,custom_domain,domain_verified,page_path,is_published" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")
+          
+          echo "Site config response: $RESPONSE"
+          
+          # Parse JSON (first result)
+          SUBDOMAIN=$(echo "$RESPONSE" | jq -r '.[0].subdomain // empty')
+          CUSTOM_DOMAIN=$(echo "$RESPONSE" | jq -r '.[0].custom_domain // empty')
+          DOMAIN_VERIFIED=$(echo "$RESPONSE" | jq -r '.[0].domain_verified // false')
+          PAGE_PATH=$(echo "$RESPONSE" | jq -r '.[0].page_path // "wall"')
+          IS_PUBLISHED=$(echo "$RESPONSE" | jq -r '.[0].is_published // false')
+          
+          # Set outputs
+          echo "subdomain=${SUBDOMAIN}" >> $GITHUB_OUTPUT
+          echo "custom_domain=${CUSTOM_DOMAIN}" >> $GITHUB_OUTPUT
+          echo "domain_verified=${DOMAIN_VERIFIED}" >> $GITHUB_OUTPUT
+          echo "page_path=${PAGE_PATH}" >> $GITHUB_OUTPUT
+          echo "is_published=${IS_PUBLISHED}" >> $GITHUB_OUTPUT
+          
+          # Generate project name for Cloudflare
+          if [ -n "$SUBDOMAIN" ]; then
+            echo "cf_project_name=${SUBDOMAIN}" >> $GITHUB_OUTPUT
+          else
+            echo "cf_project_name=wallify-${{ inputs.project_id }}" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "📋 Site Config:"
+          echo "  Subdomain: $SUBDOMAIN"
+          echo "  Custom Domain: $CUSTOM_DOMAIN"
+          echo "  Domain Verified: $DOMAIN_VERIFIED"
+          echo "  Page Path: $PAGE_PATH"
+
+      # =========================================================================
+      # 5. BUILD (ISOLATED MODE)
       # =========================================================================
       - name: Build site for project ${{ inputs.project_id }}
         working-directory: ${{ env.SITE_BUILDER_DIR }}
         env:
           BUILD_PROJECT_ID: ${{ inputs.project_id }}
+          BUILD_PAGE_PATH: ${{ steps.site_config.outputs.page_path }}
           # Supabase credentials for fetching site config & testimonials
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           echo "🎯 Building in ISOLATED mode for Project ID: $BUILD_PROJECT_ID"
+          echo "📍 Page path: /$BUILD_PAGE_PATH"
           npm run build
           
           # Verify build output exists
@@ -91,17 +137,89 @@ jobs:
           ls -la dist/
 
       # =========================================================================
-      # 5. DEPLOY TO CLOUDFLARE PAGES
+      # 6. DEPLOY TO CLOUDFLARE PAGES
       # =========================================================================
       - name: Deploy to Cloudflare Pages
+        id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy ${{ env.SITE_BUILDER_DIR }}/dist --project-name=wallify-${{ inputs.project_id }} --branch=${{ inputs.environment == 'production' && 'main' || 'preview' }}
+          command: pages deploy ${{ env.SITE_BUILDER_DIR }}/dist --project-name=${{ steps.site_config.outputs.cf_project_name }} --branch=${{ inputs.environment == 'production' && 'main' || 'preview' }}
 
       # =========================================================================
-      # 6. OUTPUT DEPLOYMENT URL
+      # 7. CONFIGURE CUSTOM DOMAIN (if verified)
+      # =========================================================================
+      - name: Configure custom domain
+        if: steps.site_config.outputs.custom_domain != '' && steps.site_config.outputs.domain_verified == 'true'
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          CUSTOM_DOMAIN="${{ steps.site_config.outputs.custom_domain }}"
+          PROJECT_NAME="${{ steps.site_config.outputs.cf_project_name }}"
+          
+          echo "🌐 Configuring custom domain: $CUSTOM_DOMAIN for project: $PROJECT_NAME"
+          
+          # Add custom domain to Cloudflare Pages project
+          # Note: This is idempotent - will succeed even if domain already exists
+          RESPONSE=$(curl -s -X POST \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/${PROJECT_NAME}/domains" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"name\": \"${CUSTOM_DOMAIN}\"}")
+          
+          echo "Cloudflare response: $RESPONSE"
+          
+          SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
+          if [ "$SUCCESS" = "true" ]; then
+            echo "✅ Custom domain configured successfully"
+          else
+            # Check if it's already configured (error code 8000007)
+            ERROR_CODE=$(echo "$RESPONSE" | jq -r '.errors[0].code // 0')
+            if [ "$ERROR_CODE" = "8000007" ]; then
+              echo "ℹ️ Custom domain already configured"
+            else
+              echo "⚠️ Domain configuration may need manual setup"
+              echo "$RESPONSE" | jq '.errors'
+            fi
+          fi
+
+      # =========================================================================
+      # 8. UPDATE DEPLOYED URL IN DATABASE
+      # =========================================================================
+      - name: Update deployed URL in database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          # Determine the final URL
+          if [ -n "${{ steps.site_config.outputs.custom_domain }}" ] && [ "${{ steps.site_config.outputs.domain_verified }}" = "true" ]; then
+            DEPLOYED_URL="https://${{ steps.site_config.outputs.custom_domain }}"
+          else
+            DEPLOYED_URL="https://${{ steps.site_config.outputs.cf_project_name }}.pages.dev"
+          fi
+          
+          echo "📝 Updating deployed_url to: $DEPLOYED_URL"
+          
+          # Update site_settings with deployed URL and build status
+          curl -s -X PATCH \
+            "${SUPABASE_URL}/rest/v1/site_settings?project_id=eq.${{ inputs.project_id }}" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d "{
+              \"deployed_url\": \"$DEPLOYED_URL\",
+              \"build_status\": \"success\",
+              \"last_build_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+              \"is_published\": true
+            }"
+          
+          echo "✅ Database updated"
+
+      # =========================================================================
+      # 9. DEPLOYMENT SUMMARY
       # =========================================================================
       - name: Deployment Summary
         run: |
@@ -111,10 +229,18 @@ jobs:
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Project ID | \`${{ inputs.project_id }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Environment | ${{ inputs.environment }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Cloudflare Project | \`wallify-${{ inputs.project_id }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| URL | https://wallify-${{ inputs.project_id }}.pages.dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cloudflare Project | \`${{ steps.site_config.outputs.cf_project_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Pages URL | https://${{ steps.site_config.outputs.cf_project_name }}.pages.dev |" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -n "${{ steps.site_config.outputs.custom_domain }}" ] && [ "${{ steps.site_config.outputs.domain_verified }}" = "true" ]; then
+            echo "| Custom Domain | https://${{ steps.site_config.outputs.custom_domain }} ✅ |" >> $GITHUB_STEP_SUMMARY
+          elif [ -n "${{ steps.site_config.outputs.custom_domain }}" ]; then
+            echo "| Custom Domain | ${{ steps.site_config.outputs.custom_domain }} (pending verification) |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "| Page Path | /${{ steps.site_config.outputs.page_path }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The site is now live! Custom domain configuration is available in Cloudflare dashboard." >> $GITHUB_STEP_SUMMARY
+          echo "The site is now live!" >> $GITHUB_STEP_SUMMARY
 
   # =============================================================================
   # NOTIFY ON FAILURE (Optional - uncomment if using Slack/Discord)
