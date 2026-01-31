@@ -3,7 +3,7 @@
  * Fetches testimonials and site configuration for static generation
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -16,7 +16,7 @@ if (!hasCredentials) {
 }
 
 // Only create client if credentials exist
-export const supabase: SupabaseClient | null = hasCredentials 
+export const supabase = hasCredentials 
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
@@ -77,6 +77,32 @@ export async function getAllActiveSites(): Promise<SiteConfig[]> {
   }
 
   return data || [];
+}
+
+/**
+ * Fetch site configuration by project ID (for isolated tenant builds)
+ */
+export async function getSiteByProjectId(projectId: string): Promise<SiteConfig | null> {
+  if (!supabase) {
+    console.log('[Site Builder] Using mock site data for project:', projectId);
+    const mockSites = getMockSites();
+    // For mock data, return first mock site if projectId matches 'demo' or similar
+    return mockSites.length > 0 ? mockSites[0] : null;
+  }
+
+  const { data, error } = await supabase
+    .from('site_settings')
+    .select('*')
+    .eq('project_id', projectId)
+    .eq('is_published', true)
+    .single();
+
+  if (error) {
+    console.error(`[Site Builder] Error fetching site for project ${projectId}:`, error);
+    return null;
+  }
+
+  return data;
 }
 
 /**

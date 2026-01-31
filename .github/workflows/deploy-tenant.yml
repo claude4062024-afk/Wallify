@@ -1,0 +1,132 @@
+# =============================================================================
+# Wallify - Isolated Tenant Site Deployment
+# =============================================================================
+# This workflow builds and deploys a single customer's testimonial site.
+# 
+# Trigger: Manual dispatch with project_id input
+# Build: Astro generates only the specified project (ISOLATED mode)
+# Deploy: Cloudflare Pages with project-specific naming
+#
+# Following Soul.md: < 2 minutes from trigger to live page
+# =============================================================================
+
+name: Deploy Tenant Site
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_id:
+        description: 'Project ID (UUID) to build and deploy'
+        required: true
+        type: string
+      environment:
+        description: 'Deployment environment'
+        required: false
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - preview
+
+# Prevent concurrent deployments for the same project
+concurrency:
+  group: deploy-${{ inputs.project_id }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '20'
+  SITE_BUILDER_DIR: 'site-builder'
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy Tenant Site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # =========================================================================
+      # 1. CHECKOUT
+      # =========================================================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # =========================================================================
+      # 2. SETUP NODE.JS
+      # =========================================================================
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.SITE_BUILDER_DIR }}/package-lock.json
+
+      # =========================================================================
+      # 3. INSTALL DEPENDENCIES
+      # =========================================================================
+      - name: Install dependencies
+        working-directory: ${{ env.SITE_BUILDER_DIR }}
+        run: npm ci
+
+      # =========================================================================
+      # 4. BUILD (ISOLATED MODE)
+      # =========================================================================
+      - name: Build site for project ${{ inputs.project_id }}
+        working-directory: ${{ env.SITE_BUILDER_DIR }}
+        env:
+          BUILD_PROJECT_ID: ${{ inputs.project_id }}
+          # Supabase credentials for fetching site config & testimonials
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "🎯 Building in ISOLATED mode for Project ID: $BUILD_PROJECT_ID"
+          npm run build
+          
+          # Verify build output exists
+          if [ ! -d "dist" ]; then
+            echo "❌ Build failed: dist/ directory not found"
+            exit 1
+          fi
+          
+          echo "✅ Build completed successfully"
+          ls -la dist/
+
+      # =========================================================================
+      # 5. DEPLOY TO CLOUDFLARE PAGES
+      # =========================================================================
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ${{ env.SITE_BUILDER_DIR }}/dist --project-name=wallify-${{ inputs.project_id }} --branch=${{ inputs.environment == 'production' && 'main' || 'preview' }}
+
+      # =========================================================================
+      # 6. OUTPUT DEPLOYMENT URL
+      # =========================================================================
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Project ID | \`${{ inputs.project_id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ inputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cloudflare Project | \`wallify-${{ inputs.project_id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| URL | https://wallify-${{ inputs.project_id }}.pages.dev |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The site is now live! Custom domain configuration is available in Cloudflare dashboard." >> $GITHUB_STEP_SUMMARY
+
+  # =============================================================================
+  # NOTIFY ON FAILURE (Optional - uncomment if using Slack/Discord)
+  # =============================================================================
+  # notify-failure:
+  #   name: Notify on Failure
+  #   runs-on: ubuntu-latest
+  #   needs: build-and-deploy
+  #   if: failure()
+  #   steps:
+  #     - name: Send failure notification
+  #       run: |
+  #         curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+  #           -H 'Content-Type: application/json' \
+  #           -d '{"text":"❌ Deployment failed for project ${{ inputs.project_id }}"}'
