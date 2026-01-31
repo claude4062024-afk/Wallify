@@ -1,6 +1,15 @@
 /**
  * Rebuild Site Job
- * Triggers static site regeneration when testimonials are updated
+ * Triggers GitHub Actions workflow to build and deploy customer sites
+ * 
+ * Following Soul.md:
+ * - Build time < 30 seconds per site
+ * - User sees updated page < 2 minutes from approval
+ * 
+ * Architecture:
+ * - Scraper Service triggers GitHub Actions via workflow_dispatch
+ * - GitHub Actions runs isolated build (BUILD_PROJECT_ID)
+ * - Cloudflare Pages deploys the static site
  */
 
 import type { Job } from 'bull';
@@ -8,24 +17,24 @@ import axios from 'axios';
 import { RebuildJobData } from '../lib/queue';
 import { supabase } from '../lib/supabase';
 
-// Site builder service URL (Astro build server)
-const SITE_BUILDER_URL = process.env.SITE_BUILDER_URL || 'http://localhost:4321';
+// GitHub configuration
+const GITHUB_PAT = process.env.GITHUB_PAT;
+const GITHUB_OWNER = process.env.GITHUB_OWNER || 'Kimenzo';
+const GITHUB_REPO = process.env.GITHUB_REPO || 'Wallify';
+const GITHUB_WORKFLOW = 'deploy-tenant.yml';
 
-// Cloudflare Pages deploy hook (if using Cloudflare)
-const CLOUDFLARE_DEPLOY_HOOK = process.env.CLOUDFLARE_DEPLOY_HOOK;
-
-// Vercel deploy hook (if using Vercel)
-const VERCEL_DEPLOY_HOOK = process.env.VERCEL_DEPLOY_HOOK;
+// GitHub Actions API endpoint
+const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/workflows/${GITHUB_WORKFLOW}/dispatches`;
 
 interface BuildResult {
   success: boolean;
-  buildId?: string;
-  url?: string;
-  error?: string;
+  message: string;
+  workflowTriggered?: boolean;
 }
 
 /**
  * Process a rebuild job for a specific project
+ * Triggers GitHub Actions to build and deploy the site
  */
 export async function processRebuildJob(job: Job<RebuildJobData>): Promise<void> {
   const { projectId, organizationId, trigger } = job.data;
@@ -33,10 +42,15 @@ export async function processRebuildJob(job: Job<RebuildJobData>): Promise<void>
   console.log(`[RebuildJob] Starting job ${job.id}`, { projectId, trigger });
 
   try {
-    // Get project/site configuration
+    // Validate GitHub PAT is configured
+    if (!GITHUB_PAT) {
+      throw new Error('GITHUB_PAT environment variable not configured');
+    }
+
+    // Get project details for logging
     const { data: project, error } = await supabase
       .from('projects')
-      .select('*, site_settings(*)')
+      .select('id, name')
       .eq('id', projectId)
       .single();
 
@@ -44,23 +58,18 @@ export async function processRebuildJob(job: Job<RebuildJobData>): Promise<void>
       throw new Error(`Project not found: ${projectId}`);
     }
 
-    console.log(`[RebuildJob] Building site for project: ${project.name}`);
+    console.log(`[RebuildJob] Triggering GitHub Actions for project: ${project.name} (${projectId})`);
 
-    // Determine deployment target
-    let result: BuildResult;
-
-    if (CLOUDFLARE_DEPLOY_HOOK) {
-      result = await triggerCloudflareBuild(project);
-    } else if (VERCEL_DEPLOY_HOOK) {
-      result = await triggerVercelBuild(project);
-    } else {
-      result = await triggerLocalBuild(project);
-    }
+    // Trigger GitHub Actions workflow
+    const result = await triggerGitHubWorkflow(projectId);
 
     if (result.success) {
-      console.log(`[RebuildJob] Build successful`, { buildId: result.buildId, url: result.url });
+      console.log(`[RebuildJob] ✅ GitHub workflow triggered successfully`, {
+        projectId,
+        projectName: project.name,
+      });
 
-      // Update project with last build time
+      // Update project with last build trigger time
       await supabase
         .from('projects')
         .update({
@@ -68,29 +77,32 @@ export async function processRebuildJob(job: Job<RebuildJobData>): Promise<void>
         })
         .eq('id', projectId);
 
-      // Record build in history (if table exists)
+      // Record build in history
       await supabase
         .from('site_builds')
         .insert({
           project_id: projectId,
           organization_id: organizationId,
-          status: 'success',
-          build_id: result.buildId,
-          url: result.url,
+          status: 'queued',
           trigger,
+          metadata: {
+            github_workflow: GITHUB_WORKFLOW,
+            triggered_at: new Date().toISOString(),
+          },
         })
         .catch(() => {
           // Table might not exist yet
+          console.warn('[RebuildJob] site_builds table not found, skipping history');
         });
 
     } else {
-      throw new Error(result.error || 'Build failed');
+      throw new Error(result.message);
     }
 
   } catch (error) {
-    console.error(`[RebuildJob] Job ${job.id} failed:`, error);
+    console.error(`[RebuildJob] ❌ Job ${job.id} failed:`, error);
 
-    // Record failed build
+    // Record failed build attempt
     await supabase
       .from('site_builds')
       .insert({
@@ -107,94 +119,116 @@ export async function processRebuildJob(job: Job<RebuildJobData>): Promise<void>
 }
 
 /**
- * Trigger Cloudflare Pages build via deploy hook
+ * Trigger GitHub Actions workflow via workflow_dispatch
+ * 
+ * API: POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches
+ * Docs: https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event
  */
-async function triggerCloudflareBuild(project: { id: string; name: string }): Promise<BuildResult> {
-  if (!CLOUDFLARE_DEPLOY_HOOK) {
-    return { success: false, error: 'Cloudflare deploy hook not configured' };
-  }
-
-  try {
-    const response = await axios.post(CLOUDFLARE_DEPLOY_HOOK, null, {
-      timeout: 30000,
-    });
-
-    return {
-      success: true,
-      buildId: response.data?.result?.id || 'unknown',
-      url: response.data?.result?.url,
-    };
-  } catch (error) {
+async function triggerGitHubWorkflow(projectId: string): Promise<BuildResult> {
+  if (!GITHUB_PAT) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Cloudflare build failed',
+      message: 'GITHUB_PAT not configured',
+      workflowTriggered: false,
     };
-  }
-}
-
-/**
- * Trigger Vercel build via deploy hook
- */
-async function triggerVercelBuild(project: { id: string; name: string }): Promise<BuildResult> {
-  if (!VERCEL_DEPLOY_HOOK) {
-    return { success: false, error: 'Vercel deploy hook not configured' };
   }
 
   try {
-    const response = await axios.post(VERCEL_DEPLOY_HOOK, null, {
-      timeout: 30000,
-    });
+    console.log(`[RebuildJob] Calling GitHub API: ${GITHUB_API_URL}`);
 
-    return {
-      success: true,
-      buildId: response.data?.job?.id || 'unknown',
-      url: response.data?.url,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Vercel build failed',
-    };
-  }
-}
-
-/**
- * Trigger local Astro build (for development)
- */
-async function triggerLocalBuild(project: { id: string; name: string }): Promise<BuildResult> {
-  try {
     const response = await axios.post(
-      `${SITE_BUILDER_URL}/api/build`,
+      GITHUB_API_URL,
       {
-        projectId: project.id,
-        projectName: project.name,
+        ref: 'main',
+        inputs: {
+          project_id: projectId,
+          environment: 'production',
+        },
       },
       {
-        timeout: 120000, // 2 minutes for build
         headers: {
+          Accept: 'application/vnd.github+json',
+          Authorization: `Bearer ${GITHUB_PAT}`,
+          'X-GitHub-Api-Version': '2022-11-28',
           'Content-Type': 'application/json',
         },
+        timeout: 30000, // 30 second timeout
       }
     );
 
-    return {
-      success: response.data?.success ?? true,
-      buildId: response.data?.buildId || `local-${Date.now()}`,
-      url: response.data?.url,
-    };
-  } catch (error) {
-    // If site builder isn't running, log and continue
-    if (axios.isAxiosError(error) && error.code === 'ECONNREFUSED') {
-      console.warn('[RebuildJob] Site builder not running, skipping build');
+    // GitHub returns 204 No Content on success
+    if (response.status === 204) {
+      console.log(`[RebuildJob] GitHub workflow dispatch successful (204 No Content)`);
       return {
         success: true,
-        buildId: 'skipped',
+        message: 'Workflow triggered successfully',
+        workflowTriggered: true,
+      };
+    }
+
+    // Unexpected success status
+    console.log(`[RebuildJob] GitHub response: ${response.status}`, response.data);
+    return {
+      success: true,
+      message: `Workflow triggered with status ${response.status}`,
+      workflowTriggered: true,
+    };
+
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const message = error.response?.data?.message || error.message;
+
+      console.error(`[RebuildJob] GitHub API error:`, {
+        status,
+        message,
+        url: GITHUB_API_URL,
+      });
+
+      // Specific error handling
+      if (status === 401) {
+        return {
+          success: false,
+          message: 'GitHub PAT is invalid or expired',
+          workflowTriggered: false,
+        };
+      }
+
+      if (status === 403) {
+        return {
+          success: false,
+          message: 'GitHub PAT lacks workflow permissions. Ensure "workflow" scope is enabled.',
+          workflowTriggered: false,
+        };
+      }
+
+      if (status === 404) {
+        return {
+          success: false,
+          message: `Workflow not found: ${GITHUB_WORKFLOW}. Check repo and workflow file exist.`,
+          workflowTriggered: false,
+        };
+      }
+
+      if (status === 422) {
+        return {
+          success: false,
+          message: `Invalid workflow inputs: ${message}`,
+          workflowTriggered: false,
+        };
+      }
+
+      return {
+        success: false,
+        message: `GitHub API error (${status}): ${message}`,
+        workflowTriggered: false,
       };
     }
 
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Local build failed',
+      message: error instanceof Error ? error.message : 'Unknown error triggering workflow',
+      workflowTriggered: false,
     };
   }
 }
@@ -222,4 +256,24 @@ export async function shouldRebuild(projectId: string): Promise<boolean> {
   return (count || 0) > 0;
 }
 
-export default { processRebuildJob, shouldRebuild };
+/**
+ * Manually trigger a rebuild (for API endpoints)
+ */
+export async function triggerRebuild(
+  projectId: string,
+  organizationId: string,
+  trigger: string = 'manual'
+): Promise<BuildResult> {
+  console.log(`[RebuildJob] Manual trigger for project: ${projectId}`);
+
+  if (!GITHUB_PAT) {
+    return {
+      success: false,
+      message: 'GITHUB_PAT not configured. Set it in environment variables.',
+    };
+  }
+
+  return triggerGitHubWorkflow(projectId);
+}
+
+export default { processRebuildJob, shouldRebuild, triggerRebuild };

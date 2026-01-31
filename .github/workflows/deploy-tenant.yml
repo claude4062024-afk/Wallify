@@ -30,7 +30,7 @@ on:
 
 # Prevent concurrent deployments for the same project
 concurrency:
-  group: deploy-${{ inputs.project_id }}
+  group: deploy-${{ github.event.inputs.project_id }}
   cancel-in-progress: false
 
 env:
