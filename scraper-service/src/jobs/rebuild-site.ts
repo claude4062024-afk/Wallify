@@ -39,7 +39,7 @@ interface BuildResult {
 export async function processRebuildJob(job: Job<RebuildJobData>): Promise<void> {
   const { projectId, organizationId, trigger } = job.data;
 
-  console.log(`[RebuildJob] Starting job ${job.id} - rebuild-site.ts:42`, { projectId, trigger });
+  console.log(`[RebuildJob] Starting job ${job.id}`, { projectId, trigger });
 
   try {
     // Validate GitHub PAT is configured
@@ -58,13 +58,13 @@ export async function processRebuildJob(job: Job<RebuildJobData>): Promise<void>
       throw new Error(`Project not found: ${projectId}`);
     }
 
-    console.log(`[RebuildJob] Triggering GitHub Actions for project: ${project.name} (${projectId}) - rebuild-site.ts:61`);
+    console.log(`[RebuildJob] Triggering GitHub Actions for project: ${project.name} (${projectId})`);
 
     // Trigger GitHub Actions workflow
     const result = await triggerGitHubWorkflow(projectId);
 
     if (result.success) {
-      console.log(`[RebuildJob] ✅ GitHub workflow triggered successfully - rebuild-site.ts:67`, {
+      console.log(`[RebuildJob] ✅ GitHub workflow triggered successfully`, {
         projectId,
         projectName: project.name,
       });
@@ -78,41 +78,45 @@ export async function processRebuildJob(job: Job<RebuildJobData>): Promise<void>
         .eq('id', projectId);
 
       // Record build in history
-      await supabase
-        .from('site_builds')
-        .insert({
-          project_id: projectId,
-          organization_id: organizationId,
-          status: 'queued',
-          trigger,
-          metadata: {
-            github_workflow: GITHUB_WORKFLOW,
-            triggered_at: new Date().toISOString(),
-          },
-        })
-        .catch(() => {
-          // Table might not exist yet
-          console.warn('[RebuildJob] site_builds table not found, skipping history - rebuild-site.ts:95');
-        });
+      try {
+        await supabase
+          .from('site_builds')
+          .insert({
+            project_id: projectId,
+            organization_id: organizationId,
+            status: 'queued',
+            trigger,
+            metadata: {
+              github_workflow: GITHUB_WORKFLOW,
+              triggered_at: new Date().toISOString(),
+            },
+          });
+      } catch {
+        // Table might not exist yet
+        console.warn('[RebuildJob] site_builds table not found, skipping history');
+      }
 
     } else {
       throw new Error(result.message);
     }
 
   } catch (error) {
-    console.error(`[RebuildJob] ❌ Job ${job.id} failed: - rebuild-site.ts:103`, error);
+    console.error(`[RebuildJob] ❌ Job ${job.id} failed:`, error);
 
     // Record failed build attempt
-    await supabase
-      .from('site_builds')
-      .insert({
-        project_id: projectId,
-        organization_id: organizationId,
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        trigger,
-      })
-      .catch(() => {});
+    try {
+      await supabase
+        .from('site_builds')
+        .insert({
+          project_id: projectId,
+          organization_id: organizationId,
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          trigger,
+        });
+    } catch {
+      // ignore missing table
+    }
 
     throw error;
   }
@@ -134,7 +138,7 @@ async function triggerGitHubWorkflow(projectId: string): Promise<BuildResult> {
   }
 
   try {
-    console.log(`[RebuildJob] Calling GitHub API: ${GITHUB_API_URL} - rebuild-site.ts:137`);
+    console.log(`[RebuildJob] Calling GitHub API: ${GITHUB_API_URL}`);
 
     const response = await axios.post(
       GITHUB_API_URL,
@@ -158,7 +162,7 @@ async function triggerGitHubWorkflow(projectId: string): Promise<BuildResult> {
 
     // GitHub returns 204 No Content on success
     if (response.status === 204) {
-      console.log(`[RebuildJob] GitHub workflow dispatch successful (204 No Content) - rebuild-site.ts:161`);
+      console.log(`[RebuildJob] GitHub workflow dispatch successful (204 No Content)`);
       return {
         success: true,
         message: 'Workflow triggered successfully',
@@ -167,7 +171,7 @@ async function triggerGitHubWorkflow(projectId: string): Promise<BuildResult> {
     }
 
     // Unexpected success status
-    console.log(`[RebuildJob] GitHub response: ${response.status} - rebuild-site.ts:170`, response.data);
+    console.log(`[RebuildJob] GitHub response: ${response.status}`, response.data);
     return {
       success: true,
       message: `Workflow triggered with status ${response.status}`,
@@ -179,7 +183,7 @@ async function triggerGitHubWorkflow(projectId: string): Promise<BuildResult> {
       const status = error.response?.status;
       const message = error.response?.data?.message || error.message;
 
-      console.error(`[RebuildJob] GitHub API error: - rebuild-site.ts:182`, {
+      console.error(`[RebuildJob] GitHub API error:`, {
         status,
         message,
         url: GITHUB_API_URL,
@@ -260,11 +264,9 @@ export async function shouldRebuild(projectId: string): Promise<boolean> {
  * Manually trigger a rebuild (for API endpoints)
  */
 export async function triggerRebuild(
-  projectId: string,
-  organizationId: string,
-  trigger: string = 'manual'
+  projectId: string
 ): Promise<BuildResult> {
-  console.log(`[RebuildJob] Manual trigger for project: ${projectId} - rebuild-site.ts:267`);
+  console.log(`[RebuildJob] Manual trigger for project: ${projectId}`);
 
   if (!GITHUB_PAT) {
     return {

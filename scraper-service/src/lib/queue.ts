@@ -71,24 +71,26 @@ setupQueueLogging(rebuildQueue, 'rebuild')
 // Job data types
 export interface ScrapeJobData {
   connectionId: string
-  platform: 'twitter' | 'linkedin' | 'g2' | 'producthunt'
-  projectId: string
+  organizationId: string
+  priority?: 'low' | 'normal' | 'high'
 }
 
 export interface AnalyzeJobData {
   testimonialId: string
-  contentText: string
+  organizationId?: string
+  contentText?: string
 }
 
 export interface NotifyJobData {
-  projectId: string
-  type: 'new_testimonials' | 'scrape_complete' | 'error'
-  count?: number
-  message?: string
+  organizationId: string
+  type: 'new_testimonials' | 'scrape_complete' | 'error' | 'build_complete' | 'scrape_error' | 'weekly_digest'
+  data?: Record<string, unknown>
 }
 
 export interface RebuildJobData {
   projectId: string
+  organizationId: string
+  trigger?: string
   force?: boolean
 }
 

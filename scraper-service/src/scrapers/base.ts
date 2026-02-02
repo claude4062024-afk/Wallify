@@ -138,6 +138,7 @@ export abstract class BaseScraper {
       externalId: data.externalId,
       externalUrl: data.externalUrl || null,
       postedAt: data.postedAt?.toISOString() || null,
+      scrapedAt: new Date().toISOString(),
       metadata: data.metadata || null,
     };
   }

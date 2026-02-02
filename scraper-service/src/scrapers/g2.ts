@@ -128,7 +128,6 @@ export class G2Scraper extends BaseScraper {
 
       // Get review text (likes + dislikes combined, or just main review)
       const whatLike = $review.find('[data-test="review-like"]').text().trim();
-      const whatDislike = $review.find('[data-test="review-dislike"]').text().trim();
       const mainText = $review.find('.review-content').text().trim();
 
       let text = mainText;

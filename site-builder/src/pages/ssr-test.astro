@@ -1,0 +1,32 @@
+---
+/**
+ * SSR smoke test page
+ * Verifies server execution by rendering timestamp and request metadata.
+ */
+
+const now = new Date().toISOString();
+const userAgent = Astro.request.headers.get('user-agent') || 'unknown';
+const url = Astro.url.toString();
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SSR Test | Wallify</title>
+  </head>
+  <body>
+    <main style="font-family: system-ui, sans-serif; padding: 24px;">
+      <h1>SSR Test Page</h1>
+      <ul>
+        <li><strong>Rendered At:</strong> {now}</li>
+        <li><strong>Request URL:</strong> {url}</li>
+        <li><strong>User Agent:</strong> {userAgent}</li>
+      </ul>
+      <p>If this page shows current data, SSR is working.</p>
+    </main>
+  </body>
+</html>

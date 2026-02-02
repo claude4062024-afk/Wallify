@@ -4,7 +4,7 @@
  */
 
 import type { Job } from 'bull';
-import { ScrapeJobData, addAnalyzeJob, addNotifyJob } from '../lib/queue';
+import { ScrapeJobData, addNotifyJob } from '../lib/queue';
 import { 
   getActiveConnections, 
   saveTestimonials, 

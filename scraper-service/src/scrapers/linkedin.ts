@@ -175,9 +175,10 @@ export class LinkedInScraper extends BaseScraper {
 
     // Extract post data
     const posts = await page.evaluate(() => {
-      const postElements = document.querySelectorAll('.feed-shared-update-v2');
+      const doc = (globalThis as any).document;
+      const postElements = doc ? Array.from(doc.querySelectorAll('.feed-shared-update-v2')) : [];
 
-      return Array.from(postElements).map((el) => {
+      return postElements.map((el: any) => {
         // Get post text
         const textEl = el.querySelector('.feed-shared-text');
         const text = textEl?.textContent?.trim() || null;
@@ -210,7 +211,7 @@ export class LinkedInScraper extends BaseScraper {
       });
     });
 
-    return posts.filter((p): p is LinkedInPostData => p.postId !== null && p.text !== null);
+    return posts.filter((p) => p.postId !== null && p.text !== null);
   }
 
   /**
@@ -219,7 +220,10 @@ export class LinkedInScraper extends BaseScraper {
   private async scrollPage(page: Page, scrollCount: number): Promise<void> {
     for (let i = 0; i < scrollCount; i++) {
       await page.evaluate(() => {
-        window.scrollBy(0, window.innerHeight);
+        const win = (globalThis as any).window;
+        if (win?.scrollBy) {
+          win.scrollBy(0, win.innerHeight);
+        }
       });
       await this.delay(2000); // Longer delay for LinkedIn
     }

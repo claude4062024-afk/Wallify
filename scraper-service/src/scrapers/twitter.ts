@@ -158,9 +158,10 @@ export class TwitterScraper extends BaseScraper {
 
     // Extract tweet data
     const tweets = await page.evaluate(() => {
-      const tweetElements = document.querySelectorAll('[data-testid="tweet"]');
+      const doc = (globalThis as any).document;
+      const tweetElements = doc ? Array.from(doc.querySelectorAll('[data-testid="tweet"]')) : [];
 
-      return Array.from(tweetElements).map((el) => {
+      return tweetElements.map((el: any) => {
         const textEl = el.querySelector('[data-testid="tweetText"]');
         const userNameEl = el.querySelector('[data-testid="User-Name"]');
         const timeEl = el.querySelector('time');
@@ -194,7 +195,10 @@ export class TwitterScraper extends BaseScraper {
   private async scrollPage(page: Page, scrollCount: number): Promise<void> {
     for (let i = 0; i < scrollCount; i++) {
       await page.evaluate(() => {
-        window.scrollBy(0, window.innerHeight);
+        const win = (globalThis as any).window;
+        if (win?.scrollBy) {
+          win.scrollBy(0, win.innerHeight);
+        }
       });
       await this.delay(1500);
     }

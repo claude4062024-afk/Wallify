@@ -16,7 +16,6 @@ import {
   rebuildQueue,
 } from './lib/queue';
 import { getActiveConnections, supabase } from './lib/supabase';
-import type { Platform } from './scrapers';
 
 // Initialize Express app
 const app = express();

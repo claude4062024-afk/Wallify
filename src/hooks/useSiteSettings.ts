@@ -302,6 +302,8 @@ export function unflattenConfigToUpdates(flat: Partial<FlattenedSiteConfig>): {
     seo_config?: Partial<SeoConfig>
     subdomain?: string | null
     custom_domain?: string | null
+    page_path?: string
+    is_published?: boolean
     custom_css?: string | null
     custom_header_html?: string | null
     custom_footer_html?: string | null
@@ -359,6 +361,8 @@ export function unflattenConfigToUpdates(flat: Partial<FlattenedSiteConfig>): {
     // Separate column fields
     if ('subdomain' in flat) updates.subdomain = flat.subdomain
     if ('custom_domain' in flat) updates.custom_domain = flat.custom_domain
+    if ('page_path' in flat && flat.page_path) updates.page_path = flat.page_path
+    if ('is_published' in flat) updates.is_published = flat.is_published
     if ('custom_css' in flat) updates.custom_css = flat.custom_css
     if ('custom_header_html' in flat) updates.custom_header_html = flat.custom_header_html
     if ('custom_footer_html' in flat) updates.custom_footer_html = flat.custom_footer_html
@@ -510,6 +514,8 @@ async function createSiteSettings(
         .insert({
             project_id: projectId,
             subdomain: generatedSubdomain,
+            page_path: 'wall',
+            is_published: false,
             config: config as unknown as Json,
             layout_config: defaultLayoutConfig as unknown as Json,
             seo_config: defaultSeoConfig as unknown as Json,
@@ -603,6 +609,8 @@ async function updateSiteSettings(
     // Add separate column updates directly
     if ('subdomain' in dbUpdates) updatePayload.subdomain = dbUpdates.subdomain
     if ('custom_domain' in dbUpdates) updatePayload.custom_domain = dbUpdates.custom_domain
+    if ('page_path' in dbUpdates) updatePayload.page_path = dbUpdates.page_path
+    if ('is_published' in dbUpdates) updatePayload.is_published = dbUpdates.is_published
     if ('custom_css' in dbUpdates) updatePayload.custom_css = dbUpdates.custom_css
     if ('custom_header_html' in dbUpdates) updatePayload.custom_header_html = dbUpdates.custom_header_html
     if ('custom_footer_html' in dbUpdates) updatePayload.custom_footer_html = dbUpdates.custom_footer_html

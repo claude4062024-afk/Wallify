@@ -1,18 +1,23 @@
 import { defineConfig } from 'astro/config';
-import node from '@astrojs/node';
+
+import cloudflare from '@astrojs/cloudflare';
 
 // https://astro.build/config
+// Cloudflare Pages SSR build
 export default defineConfig({
   // Dev server on port 5179
   server: {
     port: 5179,
   },
-  // Static output with server API routes (Astro 5 default)
-  output: 'static',
+
+  // Server output - renders on request
+  output: 'server',
+
   build: {
     // Optimized for fast loading
     inlineStylesheets: 'auto',
   },
+
   vite: {
     build: {
       // Minimize bundle size
@@ -20,8 +25,8 @@ export default defineConfig({
       minify: 'esbuild',
     },
   },
-  // Node adapter for API routes
-  adapter: node({
-    mode: 'standalone',
-  }),
+
+  adapter: cloudflare({
+    imageService: 'cloudflare',
+  })
 });

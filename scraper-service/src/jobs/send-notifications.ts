@@ -11,8 +11,6 @@ import { supabase } from '../lib/supabase';
 const EMAIL_API_KEY = process.env.EMAIL_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'notifications@wallify.com';
 
-// Push notification service (optional)
-const PUSH_API_KEY = process.env.PUSH_API_KEY;
 
 interface NotificationResult {
   success: boolean;
@@ -25,6 +23,7 @@ interface NotificationResult {
  */
 export async function processNotifyJob(job: Job<NotifyJobData>): Promise<void> {
   const { organizationId, type, data } = job.data;
+  const payload = (data || {}) as Record<string, any>;
 
   console.log(`[NotifyJob] Starting job ${job.id}`, { type, organizationId });
 
@@ -50,34 +49,47 @@ export async function processNotifyJob(job: Job<NotifyJobData>): Promise<void> {
     switch (type) {
       case 'new_testimonials':
         if (preferences.emailOnNewTestimonials) {
-          const emailResult = await sendNewTestimonialsEmail(org, data);
+          const emailResult = await sendNewTestimonialsEmail(org, {
+            count: payload.count ?? 0,
+            platform: payload.platform ?? 'unknown',
+          });
           results.push(emailResult);
         }
         // Always create in-app notification
-        await createInAppNotification(organizationId, type, data);
+        await createInAppNotification(organizationId, type, payload);
         results.push({ success: true, channel: 'in_app' });
         break;
 
       case 'build_complete':
         if (preferences.emailOnBuildComplete) {
-          const emailResult = await sendBuildCompleteEmail(org, data);
+          const emailResult = await sendBuildCompleteEmail(org, {
+            url: payload.url,
+            projectName: payload.projectName,
+          });
           results.push(emailResult);
         }
-        await createInAppNotification(organizationId, type, data);
+        await createInAppNotification(organizationId, type, payload);
         results.push({ success: true, channel: 'in_app' });
         break;
 
       case 'scrape_error':
         // Always notify on errors
-        const errorEmailResult = await sendErrorEmail(org, data);
+        const errorEmailResult = await sendErrorEmail(org, {
+          error: payload.error ?? 'Unknown error',
+          platform: payload.platform,
+        });
         results.push(errorEmailResult);
-        await createInAppNotification(organizationId, type, data);
+        await createInAppNotification(organizationId, type, payload);
         results.push({ success: true, channel: 'in_app' });
         break;
 
       case 'weekly_digest':
         if (preferences.weeklyDigest) {
-          const digestResult = await sendWeeklyDigestEmail(org, data);
+          const digestResult = await sendWeeklyDigestEmail(org, {
+            newCount: payload.newCount ?? 0,
+            totalCount: payload.totalCount ?? 0,
+            topPlatform: payload.topPlatform ?? 'unknown',
+          });
           results.push(digestResult);
         }
         break;
@@ -118,11 +130,17 @@ async function getNotificationPreferences(organizationId: string): Promise<{
       .eq('organization_id', organizationId)
       .single();
 
-    if (data) {
+    const prefs = data as {
+      email_on_new_testimonials?: boolean | null;
+      email_on_build_complete?: boolean | null;
+      weekly_digest?: boolean | null;
+    } | null;
+
+    if (prefs) {
       return {
-        emailOnNewTestimonials: data.email_on_new_testimonials ?? defaults.emailOnNewTestimonials,
-        emailOnBuildComplete: data.email_on_build_complete ?? defaults.emailOnBuildComplete,
-        weeklyDigest: data.weekly_digest ?? defaults.weeklyDigest,
+        emailOnNewTestimonials: prefs.email_on_new_testimonials ?? defaults.emailOnNewTestimonials,
+        emailOnBuildComplete: prefs.email_on_build_complete ?? defaults.emailOnBuildComplete,
+        weeklyDigest: prefs.weekly_digest ?? defaults.weeklyDigest,
       };
     }
   } catch {

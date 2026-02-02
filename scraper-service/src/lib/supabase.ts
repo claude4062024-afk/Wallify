@@ -22,64 +22,97 @@ export const supabase = createClient<Database>(
 
 // Types for testimonials
 export interface RawTestimonial {
-  content_text: string
-  author_name: string
-  author_title?: string | null
-  author_company?: string | null
-  author_avatar?: string | null
-  source: 'twitter' | 'linkedin' | 'g2' | 'producthunt' | 'capterra' | 'trustpilot'
-  source_url?: string | null
-  source_id?: string | null
+  connectionId: string
+  organizationId: string
+  projectId: string
+  contentText: string
+  authorName: string
+  authorHandle?: string | null
+  authorTitle?: string | null
+  authorCompany?: string | null
+  authorAvatar?: string | null
+  source: 'twitter' | 'linkedin' | 'g2' | 'producthunt' | 'capterra' | 'trustpilot' | 'direct' | 'email' | 'video'
+  externalUrl?: string | null
+  externalId: string
   rating?: number | null
-  scraped_at: string
+  postedAt?: string | null
+  scrapedAt: string
+  metadata?: Record<string, unknown> | null
 }
 
 export interface Connection {
   id: string
-  project_id: string
+  organizationId: string
+  projectId: string
   platform: string
-  account_id: string | null
-  account_name: string | null
-  access_token: string | null
-  refresh_token: string | null
-  status: string
-  last_scraped_at: string | null
+  platformHandle: string | null
+  accountId: string | null
+  accountName: string | null
+  accessToken: string | null
+  refreshToken: string | null
+  status: 'active' | 'inactive' | 'pending' | 'error' | 'scraping'
+  lastScrapedAt: string | null
   metadata: Record<string, unknown> | null
 }
 
 /**
  * Fetch all active connections for scraping
  */
-export async function getActiveConnections(): Promise<Connection[]> {
-  const { data, error } = await supabase
+export async function getActiveConnections(organizationId?: string): Promise<Connection[]> {
+  let query = supabase
     .from('connections')
     .select('*')
     .eq('status', 'active')
 
+  if (organizationId) {
+    query = query.eq('organization_id', organizationId)
+  }
+
+  const { data, error } = await query
+
   if (error) throw new Error(error.message)
-  return data as Connection[]
+
+  const rows = (data || []) as Database['public']['Tables']['connections']['Row'][]
+
+  return rows.map((row) => ({
+    id: row.id,
+    organizationId: row.organization_id,
+    projectId: row.project_id,
+    platform: row.platform,
+    platformHandle: row.platform_handle ?? null,
+    accountId: row.account_id ?? null,
+    accountName: row.account_name ?? null,
+    accessToken: row.access_token ?? null,
+    refreshToken: row.refresh_token ?? null,
+    status: row.status,
+    lastScrapedAt: row.last_scraped_at ?? null,
+    metadata: row.metadata ?? null,
+  }))
 }
 
 /**
  * Save raw testimonials to database
  */
 export async function saveTestimonials(
-  projectId: string,
   testimonials: RawTestimonial[]
 ): Promise<number> {
   const inserts = testimonials.map(t => ({
-    project_id: projectId,
-    content_text: t.content_text,
-    author_name: t.author_name,
-    author_title: t.author_title || null,
-    author_company: t.author_company || null,
-    author_avatar: t.author_avatar || null,
+    organization_id: t.organizationId,
+    project_id: t.projectId,
+    content_text: t.contentText,
+    author_name: t.authorName,
+    author_handle: t.authorHandle || null,
+    author_title: t.authorTitle || null,
+    author_company: t.authorCompany || null,
+    author_avatar: t.authorAvatar || null,
     source: t.source,
-    source_url: t.source_url || null,
-    source_id: t.source_id || null,
+    source_url: t.externalUrl || null,
+    source_id: t.externalId,
     rating: t.rating || null,
+    metadata: t.metadata || null,
     status: 'pending' as const,
     verification_status: 'unverified' as const,
+    created_at: t.scrapedAt,
   }))
 
   const { data, error } = await supabase
@@ -111,7 +144,7 @@ export async function updateConnectionLastScraped(connectionId: string): Promise
  */
 export async function updateConnectionStatus(
   connectionId: string, 
-  status: 'active' | 'inactive' | 'error' | 'pending',
+  status: 'active' | 'inactive' | 'error' | 'pending' | 'scraping',
   errorMessage?: string
 ): Promise<void> {
   const { error } = await supabase
@@ -129,13 +162,21 @@ export async function updateConnectionStatus(
 /**
  * Get testimonials for AI processing
  */
-export async function getUnprocessedTestimonials(limit = 50): Promise<Array<{ id: string; content_text: string }>> {
-  const { data, error } = await supabase
+export async function getUnprocessedTestimonials(
+  organizationId?: string,
+  limit = 50
+): Promise<Array<{ id: string; content_text: string | null; metadata: Record<string, unknown> | null }>> {
+  let query = supabase
     .from('testimonials')
-    .select('id, content_text')
+    .select('id, content_text, metadata')
     .is('quality_score', null)
     .not('content_text', 'is', null)
-    .limit(limit)
+
+  if (organizationId) {
+    query = query.eq('organization_id', organizationId)
+  }
+
+  const { data, error } = await query.limit(limit)
 
   if (error) throw new Error(error.message)
   return data
@@ -147,16 +188,16 @@ export async function getUnprocessedTestimonials(limit = 50): Promise<Array<{ id
 export async function updateTestimonialAnalysis(
   id: string,
   analysis: {
-    quality_score: number
-    sentiment_score: number
+    qualityScore: number
+    sentimentScore: number
     tags: string[]
   }
 ): Promise<void> {
   const { error } = await supabase
     .from('testimonials')
     .update({
-      quality_score: analysis.quality_score,
-      sentiment_score: analysis.sentiment_score,
+      quality_score: analysis.qualityScore,
+      sentiment_score: analysis.sentimentScore,
       tags: analysis.tags,
       updated_at: new Date().toISOString()
     })
@@ -168,12 +209,12 @@ export async function updateTestimonialAnalysis(
 /**
  * Check if testimonial already exists (by source_id)
  */
-export async function testimonialExists(sourceId: string, source: string): Promise<boolean> {
+export async function testimonialExists(externalId: string, source: string): Promise<boolean> {
   const { data } = await supabase
     .from('testimonials')
     .select('id')
-    .eq('source_id', sourceId)
-    .eq('source', source)
+    .eq('source_id', externalId)
+    .eq('source', source as Database['public']['Tables']['testimonials']['Row']['source'])
     .limit(1)
     .single()
 

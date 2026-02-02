@@ -12,7 +12,7 @@
     "build:api": "node --loader ts-node/esm src/api/build-server.ts"
   },
   "dependencies": {
-    "@astrojs/node": "^9.5.2",
+    "@astrojs/cloudflare": "^12.6.12",
     "@supabase/supabase-js": "^2.39.0",
     "astro": "5.17"
   },

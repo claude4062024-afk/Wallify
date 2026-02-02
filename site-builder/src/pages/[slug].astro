@@ -1,76 +1,30 @@
 ---
 /**
- * Dynamic Route - Generates all customer testimonial pages
+ * Dynamic Route - Renders customer testimonial pages (SSR)
  * 
  * Following Skill.md:
  * - Single route generates all customer sites
- * - Static generation with getStaticPaths
+ * - Server-side rendering with edge caching
  * - Lighthouse score > 95 target
- * 
- * BUILD MODES:
- * - ISOLATED: Set BUILD_PROJECT_ID env var to build only one project
- * - GLOBAL: Default, builds all active sites (for dev/debugging)
  */
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import TestimonialGrid from '../components/TestimonialGrid.astro';
 import TestimonialCarousel from '../components/TestimonialCarousel.astro';
 import ShareButtons from '../components/ShareButtons.astro';
-import { getAllActiveSites, getSiteByProjectId, getTestimonials, type SiteConfig, type Testimonial } from '../lib/supabase';
-
-export async function getStaticPaths() {
-  // Check for isolated tenant build mode
-  const buildProjectId = import.meta.env.BUILD_PROJECT_ID;
-  
-  if (buildProjectId) {
-    // ISOLATED MODE: Build only the specified project
-    console.log(`[Site Builder] 🎯 Building in ISOLATED mode for Project ID: ${buildProjectId}`);
-    
-    const site = await getSiteByProjectId(buildProjectId);
-    
-    if (!site) {
-      console.warn(`[Site Builder] ⚠️ No published site found for Project ID: ${buildProjectId}`);
-      console.warn('[Site Builder] Returning empty paths - no pages will be generated');
-      return [];
-    }
-    
-    console.log(`[Site Builder] ✅ Found site: ${site.slug} (${site.company_name})`);
-    
-    return [{
-      params: { slug: site.slug },
-      props: { siteId: site.id, projectId: site.project_id },
-    }];
-  }
-  
-  // GLOBAL MODE: Build all active sites (dev/debugging)
-  console.log('[Site Builder] 🌐 Building in GLOBAL mode - fetching all active sites');
-  
-  const sites = await getAllActiveSites();
-  console.log(`[Site Builder] Found ${sites.length} active site(s)`);
-  
-  return sites.map((site) => ({
-    params: { slug: site.slug },
-    props: { siteId: site.id, projectId: site.project_id },
-  }));
-}
-
-interface Props {
-  siteId: string;
-  projectId: string;
-}
+import { getSiteBySlug, getTestimonials, type SiteConfig, type Testimonial } from '../lib/supabase';
 
 const { slug } = Astro.params;
-const { projectId } = Astro.props;
 
-// Fetch site config and testimonials
-const sites = await getAllActiveSites();
-const config = sites.find((s) => s.slug === slug);
-
+const config = await getSiteBySlug(slug);
 if (!config) {
   return Astro.redirect('/404');
 }
 
-const testimonials = await getTestimonials(projectId);
+const testimonials = await getTestimonials(config.project_id);
+
+// Cache SSR responses (1 hour)
+Astro.response.headers.set('Cache-Control', 'public, max-age=3600');
 
 // Group testimonials by layout requirements
 const featuredTestimonials = testimonials.filter((t) => (t.quality_score || 0) >= 0.8);
