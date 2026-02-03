@@ -108,6 +108,14 @@ export const Home = () => {
                         </div>
                         <span className="text-2xl font-bold text-amber-500">Wallify</span>
                     </div>
+                    <div className="hidden md:flex items-center gap-8">
+                         <button 
+                             onClick={() => navigate('/pricing')}
+                             className="text-stone-400 hover:text-amber-500 transition-colors font-medium"
+                        >
+                            Pricing
+                        </button>
+                    </div>
                     <div className="flex items-center gap-4">
                         {isAuthenticated ? (
                             <button 

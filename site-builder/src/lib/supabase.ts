@@ -44,7 +44,7 @@ export interface SiteConfig {
   primary_color: string;
   secondary_color: string | null;
   font_family: 'inter' | 'roboto' | 'poppins' | 'playfair' | 'system';
-  layout: 'grid' | 'masonry' | 'carousel' | 'list';
+  layout: 'grid' | 'masonry' | 'carousel' | 'list' | 'physics' | 'labs';
   show_header: boolean;
   show_footer: boolean;
   header_text: string | null;
@@ -194,7 +194,7 @@ function getMockSites(): SiteConfig[] {
       primary_color: '#f59e0b',
       secondary_color: '#78716c',
       font_family: 'inter',
-      layout: 'grid',
+      layout: 'labs',
       show_header: true,
       show_footer: true,
       header_text: null,

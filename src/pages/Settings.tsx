@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout/DashboardLayout'
 import { LoadingOverlay } from '../components/ui/LoadingOverlay'
 import { useAuth } from '../hooks/useAuth'
@@ -77,6 +78,7 @@ function ProgressBar({ value }: { value: number }) {
 }
 
 export default function Settings() {
+    const navigate = useNavigate()
     const { profile, user } = useAuth()
     const [activeTab, setActiveTab] = useState<TabType>('profile')
     const [copiedKey, setCopiedKey] = useState<string | null>(null)
@@ -647,7 +649,10 @@ export default function Settings() {
                                             <span className="text-lg font-normal text-muted-foreground">/month</span>
                                         </p>
                                     </div>
-                                    <button className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded-lg transition-colors">
+                                    <button
+                                        onClick={() => navigate('/pricing')}
+                                        className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded-lg transition-colors"
+                                    >
                                         Upgrade Plan
                                     </button>
                                 </div>
